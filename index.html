@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ZJT 分发站 · APK下载 & 文件托管</title>
+<meta name="robots" content="noindex, nofollow">
+<style>
+:root{
+  --bg:#0b1220; --bg2:#0f1a30; --card:#121e36; --card2:#16244a;
+  --gold:#f5c542; --gold2:#ffdd7a; --line:#22335c; --txt:#e8eefc;
+  --mut:#8ba0c9; --ok:#3ddc84; --err:#ff6b6b; --r:14px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:linear-gradient(160deg,var(--bg) 0%,var(--bg2) 60%,#0a0f1d 100%);color:var(--txt);
+  font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh;min-height:100dvh;}
+.wrap{max-width:860px;margin:0 auto;padding:0 16px 70px}
+header{display:flex;align-items:center;gap:12px;padding:26px 0 18px}
+.logo{width:46px;height:46px;border-radius:13px;flex:0 0 auto;
+  background:linear-gradient(135deg,#1d4ed8,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:22px;
+  box-shadow:0 6px 18px rgba(29,78,216,.35)}
+header h1{font-size:20px;font-weight:800;letter-spacing:.5px}
+header .sub{font-size:12px;color:var(--mut);margin-top:3px}
+.badge-free{font-size:10px;color:var(--gold);border:1px solid rgba(245,197,66,.45);border-radius:20px;padding:2px 8px;margin-left:auto}
+.tabs{display:flex;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:6px;margin:14px 0 20px}
+.tab{flex:1;text-align:center;padding:11px 6px;border-radius:10px;font-size:14px;font-weight:600;color:var(--mut);cursor:pointer;transition:.2s;border:none;background:none}
+.tab.on{background:linear-gradient(135deg,rgba(245,197,66,.16),rgba(245,197,66,.06));color:var(--gold);box-shadow:inset 0 0 0 1px rgba(245,197,66,.35)}
+.view{display:none}.view.on{display:block}
+/* ===== APK 卡片 ===== */
+.apk{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:14px;
+  display:flex;gap:14px;align-items:flex-start}
+.apk .ic{width:56px;height:56px;border-radius:14px;flex:0 0 auto;background:linear-gradient(135deg,#1d4ed8,#7c3aed);
+  display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff}
+.apk h3{font-size:16px;font-weight:700}
+.apk .meta{font-size:12px;color:var(--mut);margin:4px 0 8px}
+.apk .log{font-size:12.5px;color:var(--mut);line-height:1.6;background:rgba(255,255,255,.03);border-radius:8px;padding:8px 10px;margin-bottom:12px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,#f5c542,#e8a920);
+  color:#1a1405;font-weight:700;font-size:14px;border:none;border-radius:10px;padding:11px 20px;cursor:pointer;text-decoration:none;transition:.15s}
+.btn:active{transform:scale(.97)}
+.btn.ghost{background:none;color:var(--gold);border:1px solid rgba(245,197,66,.5)}
+.empty{text-align:center;color:var(--mut);padding:50px 0;font-size:14px;line-height:1.9}
+/* ===== 上传区 ===== */
+.drop{border:2px dashed rgba(245,197,66,.45);border-radius:16px;background:rgba(245,197,66,.04);
+  padding:36px 18px;text-align:center;cursor:pointer;transition:.2s}
+.drop.on{background:rgba(245,197,66,.1);border-color:var(--gold)}
+.drop .big{font-size:34px;margin-bottom:10px}
+.drop p{font-size:14.5px;font-weight:600}
+.drop span{font-size:12px;color:var(--mut);display:block;margin-top:8px;line-height:1.7}
+.mode{display:flex;gap:8px;margin:14px 0}
+.mode button{flex:1;background:var(--card);border:1px solid var(--line);color:var(--mut);border-radius:10px;padding:10px;font-size:13px;cursor:pointer}
+.mode button.on{color:var(--gold);border-color:rgba(245,197,66,.5);background:rgba(245,197,66,.08)}
+.item{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.item .top{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}
+.item .nm{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .sz{font-size:12px;color:var(--mut);flex:0 0 auto}
+.bar{height:7px;border-radius:6px;background:#0a1428;overflow:hidden;margin:6px 0 10px}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#f5c542,#ffdd7a);transition:width .2s;border-radius:6px}
+.st{font-size:12px;color:var(--mut)}
+.st.ok{color:var(--ok)} .st.err{color:var(--err)}
+.linkrow{display:flex;gap:8px;margin-top:10px}
+.linkrow input{flex:1;background:#0a1428;border:1px solid var(--line);border-radius:9px;color:var(--gold2);
+  font-size:12.5px;padding:10px 12px;outline:none;text-overflow:ellipsis}
+.mini{background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:9px;padding:10px 14px;font-size:12.5px;cursor:pointer;flex:0 0 auto;text-decoration:none;display:flex;align-items:center}
+.note{font-size:11.5px;color:var(--mut);line-height:1.8;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:18px}
+footer{text-align:center;color:#5c6f9c;font-size:11.5px;padding:26px 0 10px;line-height:1.8}
+.toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(20px);background:#1c2b52;color:var(--txt);
+  border:1px solid var(--line);padding:10px 20px;border-radius:12px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;z-index:9}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">⚡</div>
+    <div>
+      <h1>ZJT 分发站</h1>
+      <div class="sub">APK 下载 · 文件托管</div>
+    </div>
+    <span class="badge-free">免注册 · 免费</span>
+  </header>
+
+  <div class="tabs">
+    <button class="tab on" id="t1" onclick="sw(1)">📱 APK 下载</button>
+    <button class="tab" id="t2" onclick="sw(2)">📦 文件托管</button>
+  </div>
+
+  <!-- APK 区 -->
+  <div class="view on" id="v1"><div id="apklist"></div></div>
+
+  <!-- 文件托管区 -->
+  <div class="view" id="v2">
+    <div class="drop" id="drop" onclick="document.getElementById('fp').click()">
+      <div class="big">⬆️</div>
+      <p>点击选择文件，或将文件拖到此处</p>
+      <span>支持多选 · 手机 / 电脑均可 · 无需注册任何账号</span>
+    </div>
+    <input type="file" id="fp" multiple style="display:none">
+    <div class="mode">
+      <button id="m1" class="on" onclick="setMode(0)">长期托管（gofile）</button>
+      <button id="m2" onclick="setMode(1)">短期 6 天（filebin）</button>
+    </div>
+    <div id="list"></div>
+    <div class="note">
+      📌 说明：文件由页面直传第三方免费匿名存储（长期=gofile.io，短期=filebin.net），本站不保存文件、不注册、不收费。
+      gofile 长期无人访问的文件可能被平台清理；filebin 6 天后自动删除。请勿上传违法或侵权内容，后果由上传者自负。
+    </div>
+  </div>
+
+  <footer>
+    本站为静态页面，托管于 GitHub Pages · 无需注册 · 免费使用<br>
+    ⚠️ 请勿上传违法违规内容
+  </footer>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+/* ================= Tabs ================= */
+function sw(n){
+  for(let i=1;i<=2;i++){
+    document.getElementById('t'+i).classList.toggle('on',i===n);
+    document.getElementById('v'+i).classList.toggle('on',i===n);
+  }
+}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),1800)}
+
+/* ================= APK 区 ================= */
+const ICONS=['🎮','🗺️','📱','🛠️','🔓','🧰','🤖','📷'];
+function fmt(b){if(!b&&b!==0)return'';const u=['B','KB','MB','GB'];let i=0;while(b>=1024&&i<3){b/=1024;i++}return b.toFixed(b<10&&i>0?1:0)+' '+u[i]}
+async function loadApps(){
+  const box=document.getElementById('apklist');
+  try{
+    const r=await fetch('apps.json?v='+Date.now(),{cache:'no-store'});
+    const d=await r.json();
+    const list=Array.isArray(d)?d:(d.apps||[]);
+    if(!list.length){box.innerHTML='<div class="empty">📦 暂无上架应用<br>新版本将在此第一时间发布</div>';return}
+    box.innerHTML=list.map((a,i)=>`
+      <div class="apk">
+        <div class="ic">${a.icon||ICONS[i%ICONS.length]}</div>
+        <div style="flex:1;min-width:0">
+          <h3>${a.name}</h3>
+          <div class="meta">v${a.version} · ${a.size?('≈'+a.size+' · '):''}${a.date||''}</div>
+          ${a.log?`<div class="log">${a.log}</div>`:''}
+          <a class="btn" href="${a.url}">⬇️ 下载 APK</a>
+        </div>
+      </div>`).join('');
+  }catch(e){box.innerHTML='<div class="empty">应用列表加载失败，请刷新重试</div>'}
+}
+loadApps();
+
+/* ================= 上传区 ================= */
+let MODE=0;
+function setMode(m){MODE=m;
+  document.getElementById('m1').classList.toggle('on',m===0);
+  document.getElementById('m2').classList.toggle('on',m===1)}
+const drop=document.getElementById('drop');
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('on')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('on')}));
+drop.addEventListener('drop',e=>handle([...e.dataTransfer.files]));
+document.getElementById('fp').addEventListener('change',e=>{handle([...e.target.files]);e.target.value=''});
+
+function addCard(f){
+  const d=document.createElement('div');d.className='item';
+  d.innerHTML=`<div class="top"><div class="nm">${f.name}</div><div class="sz">${fmt(f.size)}</div></div>
+    <div class="bar"><i></i></div><div class="st">排队中…</div>`;
+  document.getElementById('list').prepend(d);
+  return {el:d,bar:d.querySelector('.bar i'),st:d.querySelector('.st')};
+}
+async function handle(files){
+  for(const f of files){ if(MODE===0){upGofile(f)} else {upFilebin(f)} }
+}
+function upGofile(f){
+  const c=addCard(f); c.st.textContent='获取上传节点…';
+  fetch('https://api.gofile.io/servers').then(r=>r.json()).then(d=>{
+    const s=d.data.servers[0].name;
+    return xupload(`https://${s}.gofile.io/contents/uploadfile`,f,c,'file');
+  }).then(j=>{
+    if(j&&j.status==='ok'&&j.data){
+      const u=j.data.downloadPage; c.bar.style.width='100%';
+      c.st.className='st ok'; c.st.textContent='✅ 上传成功（长期）';
+      c.el.insertAdjacentHTML('beforeend',linkRow(u));
+    }else throw 0;
+  }).catch(()=>{c.st.className='st err';c.st.textContent='❌ 上传失败，请重试或换短期模式'});
+}
+function upFilebin(f){
+  const c=addCard(f); c.st.textContent='上传中…';
+  const bin=Math.random().toString(36).slice(2,10);
+  const url=`https://filebin.net/${bin}/${encodeURIComponent(f.name)}`;
+  const x=new XMLHttpRequest();x.open('POST',url);
+  x.upload.onprogress=e=>{if(e.lengthComputable)c.bar.style.width=(e.loaded/e.total*100)+'%'};
+  x.onload=()=>{
+    if(x.status>=200&&x.status<300){
+      c.bar.style.width='100%';c.st.className='st ok';c.st.textContent='✅ 上传成功（6 天有效）';
+      c.el.insertAdjacentHTML('beforeend',linkRow(`https://filebin.net/${bin}`));
+    }else{c.st.className='st err';c.st.textContent='❌ 上传失败 ('+x.status+')'}
+  };
+  x.onerror=()=>{c.st.className='st err';c.st.textContent='❌ 网络错误'};
+  x.send(f);
+}
+function xupload(url,f,c,field){
+  return new Promise((res,rej)=>{
+    const x=new XMLHttpRequest();x.open('POST',url);
+    x.upload.onprogress=e=>{if(e.lengthComputable)c.bar.style.width=(e.loaded/e.total*88)+'%'};
+    x.onload=()=>{try{res(JSON.parse(x.responseText))}catch(e){rej(e)}};
+    x.onerror=rej;
+    const fd=new FormData();fd.append(field,f);x.send(fd);
+  });
+}
+function linkRow(u){
+  const esc=u.replace(/"/g,'&quot;');
+  return `<div class="linkrow">
+    <input readonly value="${esc}" onclick="this.select()">
+    <button class="mini" onclick="cp(this)">复制</button>
+    <a class="mini" href="${esc}" target="_blank" rel="noopener">打开</a>
+  </div>`;
+}
+function cp(b){const i=b.parentElement.querySelector('input');i.select();
+  (navigator.clipboard?navigator.clipboard.writeText(i.value):Promise.reject())
+  .then(()=>toast('链接已复制')).catch(()=>{document.execCommand('copy');toast('链接已复制')})}
+</script>
+</body>
+</html>
