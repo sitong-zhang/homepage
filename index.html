@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>ZJT 分发站</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg viewBox='0 0 48 48' xmlns='http://www.w3.org/2000/svg' style='width:100%;height:100%;display:block'%3E %3Cdefs%3E %3ClinearGradient id='lgA' x1='0' y1='0' x2='1' y2='1'%3E %3Cstop offset='0' stop-color='%232563eb'/%3E%3Cstop offset='.55' stop-color='%235b48e8'/%3E%3Cstop offset='1' stop-color='%237c3aed'/%3E %3C/linearGradient%3E %3ClinearGradient id='lgB' x1='0' y1='0' x2='0' y2='1'%3E %3Cstop offset='0' stop-color='%23ffffff' stop-opacity='.28'/%3E%3Cstop offset='1' stop-color='%23ffffff' stop-opacity='0'/%3E %3C/linearGradient%3E %3C/defs%3E %3Crect x='2' y='2' width='44' height='44' rx='13' fill='url(%23lgA)'/%3E %3Crect x='2' y='2' width='44' height='22' rx='13' fill='url(%23lgB)'/%3E %3Cpath d='M29.2 9.5 17.6 25.1c-.5.7 0 1.6.9 1.6h6.3l-2.9 10.9c-.2.9 1 1.4 1.6.7l11.9-15.9c.5-.7 0-1.6-.9-1.6h-6.4l3-10.5c.3-.9-.9-1.5-1.5-.7z' fill='%23fff'/%3E %3Ccircle cx='37' cy='12' r='2.1' fill='%23f5c542'/%3E %3C/svg%3E">
 <meta name="robots" content="noindex, nofollow">
 <style>
 :root{
@@ -21,9 +22,7 @@ header{display:flex;align-items:center;gap:12px;padding:24px 0 16px}
 .bellbtn .dot{position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;
   background:var(--err);border:2px solid var(--bg);display:none}
 .bellbtn .dot.on{display:block}
-.logo{width:46px;height:46px;border-radius:13px;flex:0 0 auto;
-  background:linear-gradient(135deg,#1d4ed8,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:22px;
-  box-shadow:0 6px 18px rgba(29,78,216,.35)}
+.logo{width:46px;height:46px;flex:0 0 auto;box-shadow:0 6px 18px rgba(29,78,216,.35)}
 header h1{font-size:20px;font-weight:800;letter-spacing:.5px}
 header .sub{font-size:12px;color:var(--mut);margin-top:3px}
 .tabs{display:flex;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:6px;margin:14px 0 20px}
@@ -118,7 +117,20 @@ footer{text-align:center;color:#5c6f9c;font-size:11.5px;padding:26px 0 10px;line
 <div class="wrap">
   <header>
     <button class="bellbtn" id="annBtn" onclick="openAnn()" aria-label="公告"><span class="ic"></span><span class="dot" id="annDot"></span></button>
-    <div class="logo">⚡</div>
+    <div class="logo"><svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block">
+<defs>
+<linearGradient id="lgA" x1="0" y1="0" x2="1" y2="1">
+<stop offset="0" stop-color="#2563eb"/><stop offset=".55" stop-color="#5b48e8"/><stop offset="1" stop-color="#7c3aed"/>
+</linearGradient>
+<linearGradient id="lgB" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="#ffffff" stop-opacity=".28"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+</linearGradient>
+</defs>
+<rect x="2" y="2" width="44" height="44" rx="13" fill="url(#lgA)"/>
+<rect x="2" y="2" width="44" height="22" rx="13" fill="url(#lgB)"/>
+<path d="M29.2 9.5 17.6 25.1c-.5.7 0 1.6.9 1.6h6.3l-2.9 10.9c-.2.9 1 1.4 1.6.7l11.9-15.9c.5-.7 0-1.6-.9-1.6h-6.4l3-10.5c.3-.9-.9-1.5-1.5-.7z" fill="#fff"/>
+<circle cx="37" cy="12" r="2.1" fill="#f5c542"/>
+</svg></div>
     <div><h1>ZJT 分发站</h1><div class="sub">APK 下载 · 文件托管</div></div>
   </header>
 
@@ -254,7 +266,7 @@ async function loadApps(){
     if(!list.length){box.innerHTML='<div class="empty">📦 暂无上架应用<br>新版本将在此第一时间发布</div>';return}
     box.innerHTML=list.map((a,i)=>`
       <div class="apk">
-        <div class="ic">${esc(a.icon||'APK')}</div>
+        <div class="ic">${esc(a.icon||'⚡')}</div>
         <div style="flex:1;min-width:0">
           <h3>${esc(a.name)}</h3>
           <div class="meta">v${esc(a.version)} · ${a.size?('≈'+esc(a.size)+' · '):''}${esc(a.date||'')}</div>
@@ -480,16 +492,6 @@ function xupload(url,f,c){
     const fd=new FormData();fd.append('file',f);x.send(fd);
   });
 }
-</script>
-</body>
-</html>
-=new FormData();fd.append('file',f);x.send(fd);
-  });
-}
-</script>
-</body>
-</html>
-
 </script>
 </body>
 </html>
