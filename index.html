@@ -85,8 +85,6 @@
 
 <!-- ===== 全局脚本：TopoJSON 与 D3-Geo ===== -->
 <script src="./vendor/topojson-client.min.js"></script>
-<script src="./vendor/d3-array.min.js"></script>
-<script src="./vendor/d3-geo.min.js"></script>
 
 <script type="importmap">
 {
@@ -255,6 +253,48 @@ const FRAG = /* glsl */`
 `;
 
 /* ============================================================
+   4.5 陆地查找表 —— 10m 边界一次性光栅化
+   把 d3.geoContains 的逐点球面几何计算(分钟级)
+   换成 canvas 光栅化 + O(1) 查表(亚秒级), 采样配置不变
+   ============================================================ */
+function rasterizeLand(landGeo){
+  const W = 2048, H = 1024;                       // 0.176°/px
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d', { willReadFrequently: true });
+  ctx.fillStyle = '#ff0000';
+
+  const geoms = landGeo.type === 'FeatureCollection'
+    ? landGeo.features.map(f => f.geometry)
+    : (landGeo.type === 'Feature' ? [landGeo.geometry] : [landGeo]);
+
+  for (const g of geoms){
+    const polys = g.type === 'Polygon' ? [g.coordinates]
+                : (g.type === 'MultiPolygon' ? g.coordinates : []);
+    for (const poly of polys){
+      ctx.beginPath();
+      for (const ring of poly){
+        for (let k = 0; k < ring.length; k++){
+          const x = (ring[k][0] + 180) / 360 * W;
+          const y = (90  - ring[k][1]) / 180 * H;
+          k === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+      }
+      ctx.fill('evenodd');                        // evenodd 正确处理内湖(里海等)
+    }
+  }
+  const data = ctx.getImageData(0, 0, W, H).data; // alpha>40 即陆地
+  return { data, W, H };
+}
+
+function isLandAt(t, lon, lat){
+  let x = Math.floor((lon + 180) / 360 * t.W); if (x < 0) x = 0; if (x >= t.W) x = t.W - 1;
+  let y = Math.floor((90  - lat) / 180 * t.H); if (y < 0) y = 0; if (y >= t.H) y = t.H - 1;
+  return t.data[(y * t.W + x) * 4 + 3] > 40;
+}
+
+/* ============================================================
    5. 构建粒子地球
    ============================================================ */
 function buildEarth(landGeo) {
@@ -267,8 +307,8 @@ function buildEarth(landGeo) {
 
   const col = new THREE.Color();
 
-  // 预缓存陆地 MultiPolygon（d3.geoContains 接受 Feature 或 Geometry）
-  const landFeature = landGeo;
+  // 陆地查找表(光栅化一次, 之后 20 万采样全部 O(1) 查表)
+  const landTable = rasterizeLand(landGeo);
 
   let checked = 0;
   let landCount = 0;
@@ -284,7 +324,7 @@ function buildEarth(landGeo) {
 
     // 经纬度判定
     const [lon, lat] = toLonLat(x, y, z);
-    const isLand = d3.geoContains(landFeature, [lon, lat]);
+    const isLand = isLandAt(landTable, lon, lat);
 
     checked++;
 
@@ -526,7 +566,7 @@ let sunRef    = null;
     return;
   }
 
-  setProgress('生成粒子…');
+  setProgress('光栅化陆地边界…');
   earth     = buildEarth(landGeo);
   starfield = buildStarfield();
   sunRef    = buildSun();
