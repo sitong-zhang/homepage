@@ -52,6 +52,50 @@
   #fs svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7;
     stroke-linecap: round; stroke-linejoin: round; }
 
+  /* 悬浮蓝圈：固定在屏幕正中，不随相机旋转/缩放移动；地球触到它时淡出 */
+  #ring { position: fixed; left: 50%; top: 50%; z-index: 15; pointer-events: none;
+    border-radius: 50%; transform: translate(-50%, -50%);
+    border: 1px solid rgba(96,172,255,.40);
+    box-shadow: 0 0 26px rgba(60,150,255,.16), inset 0 0 26px rgba(60,150,255,.09);
+    transition: opacity .30s ease; opacity: 0; }
+  #ring.on { opacity: 1; }
+  #ring::before { content: ''; position: absolute; inset: 9px; border-radius: 50%;
+    border: 1px solid rgba(96,172,255,.13); }
+  #ring i { position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px;
+    border-radius: 50%; background: rgba(140,200,255,.55); box-shadow: 0 0 10px rgba(120,190,255,.7); }
+  #ring b { position: absolute; font-size: 9.5px; letter-spacing: .22em; color: rgba(140,200,255,.42);
+    font-weight: 400; white-space: nowrap; }
+  #ring b.t { left: 50%; top: -17px; transform: translateX(-50%); }
+  #ring b.d { left: 50%; bottom: -17px; transform: translateX(-50%); }
+
+  /* 城市标签 */
+  #cities { position: fixed; inset: 0; z-index: 14; pointer-events: none; overflow: hidden; }
+  .city { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); white-space: nowrap;
+    font-size: 10.5px; letter-spacing: .08em; color: rgba(255,226,168,.0);
+    text-shadow: 0 0 10px rgba(255,180,80,.55), 0 1px 3px rgba(0,0,0,.9);
+    transition: color .45s ease, opacity .45s ease; opacity: 0; will-change: transform, opacity; }
+  .city::before { content: ''; position: absolute; left: 50%; top: 50%; width: 3px; height: 3px;
+    margin: -1.5px 0 0 -1.5px; border-radius: 50%; background: rgba(255,214,150,.9);
+    box-shadow: 0 0 8px rgba(255,190,110,.9); }
+  .city.on { opacity: 1; color: rgba(255,232,186,.92); }
+
+  /* 手势摄像头窗口 */
+  #cam { left: 16px; bottom: 132px; padding: 8px; display: none; }
+  #cam.on { display: block; }
+  #cam video { display: block; width: 224px; height: 168px; border-radius: 8px;
+    background: #05090f; transform: scaleX(-1); }
+  #cam .bar { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    margin-top: 7px; font-size: 10.5px; color: #8ea0c4; letter-spacing: .06em; }
+  #cam .s { display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: #f0a35a; margin-right: 6px; vertical-align: 1px; transition: .3s; }
+  #cam .s.ok { background: #5ad6a0; box-shadow: 0 0 8px rgba(90,214,160,.6); }
+  #cam .s.err { background: #ff5b5b; }
+  #cam .r { position: absolute; right: 1px; bottom: 1px; width: 18px; height: 18px;
+    cursor: nwse-resize; color: rgba(150,190,240,.42); }
+  #cam .r svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; }
+  #hud .k b.link { color: #7ec8ff; cursor: pointer; border-bottom: 1px dashed rgba(126,200,255,.35); }
+  #hud .k b.link:hover { color: #b8dcff; }
+
   #hint { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 20;
     color: rgba(130,180,255,.32); font-size: 11.5px; letter-spacing: .18em; pointer-events: none;
     white-space: nowrap; transition: opacity 1.2s ease 2s; opacity: 0; }
@@ -80,11 +124,21 @@
   <div class="k"><span>陆地采样</span><b id="s-land">—</b></div>
   <div class="k"><span>数据源</span><b id="s-src">—</b></div>
   <div class="k"><span>FPS</span><b id="s-fps">—</b></div>
+  <div class="k"><span>手势</span><b id="s-hand" class="link">点击开启</b></div>
+</div>
+
+<div id="cam" class="panel">
+  <video id="camv" playsinline muted></video>
+  <div class="bar"><span><i class="s" id="cam-s"></i><span id="cam-t">启动中…</span></span><span>捏合缩放</span></div>
+  <div class="r" id="cam-r"><svg viewBox="0 0 16 16"><path d="M14 6L6 14M14 10l-4 4"/></svg></div>
 </div>
 
 <div id="fs" class="panel" title="全屏">
   <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
 </div>
+
+<div id="ring"><i></i><b class="t">SCALE</b><b class="d">PINCH</b></div>
+<div id="cities"></div>
 
 <div id="hint">拖动旋转 · 滚轮缩放 · 转到背面可见太阳</div>
 
@@ -117,7 +171,13 @@ const CFG = {
   mistCount     : 60000,   // 内部辉光雾（Additive）
   shellCount    : 14000,    // 外层「防护罩」雾壳
   shellInner    : 1.02,     // 雾壳内半径（×R）
-  shellOuter    : 1.22      // 雾壳外半径（×R）
+  shellOuter    : 1.22,     // 雾壳外半径（×R）
+  moonRadius    : 0.26,     // 月球半径（×R）
+  moonDist      : 3.4,      // 月球轨道半径（×R）
+  moonSpeed     : 0.012,    // 公转角速度 rad/s（很慢）
+  cityPer       : 46,       // 每座城市的灯光点数
+  citySpread    : 0.052,    // 城市灯光扩散半径（×R）
+  ringRatio     : 0.34      // 悬浮蓝圈半径 = min(宽,高) × 此值
 };
 
 const SUN_DIR    = new THREE.Vector3(0.60, 0.28, 0.75).normalize();
@@ -530,6 +590,173 @@ function makeGlowTexture() {
   return tex;
 }
 
+/* ── 城市灯光：真实经纬度 + 中文名 ───────────────────────────── */
+const CITIES = [
+  ['北京',39.90,116.41], ['上海',31.23,121.47], ['广州',23.13,113.26],
+  ['深圳',22.54,114.06], ['成都',30.57,104.07], ['重庆',29.56,106.55],
+  ['西安',34.34,108.94], ['武汉',30.59,114.31], ['杭州',30.27,120.16],
+  ['南京',32.06,118.80], ['天津',39.13,117.20], ['沈阳',41.80,123.43],
+  ['哈尔滨',45.80,126.53], ['乌鲁木齐',43.83,87.62], ['拉萨',29.65,91.14],
+  ['昆明',25.04,102.72], ['长沙',28.23,112.94], ['郑州',34.75,113.63],
+  ['青岛',36.07,120.38], ['福州',26.07,119.30], ['济南',36.65,117.12],
+  ['合肥',31.82,117.23], ['南宁',22.82,108.32], ['贵阳',26.65,106.63],
+  ['兰州',36.06,103.83], ['台北',25.03,121.57], ['香港',22.32,114.17],
+  ['澳门',22.19,113.54],
+  ['东京',35.68,139.69], ['首尔',37.57,126.98], ['曼谷',13.76,100.50],
+  ['新加坡',1.35,103.82], ['雅加达',-6.21,106.85], ['马尼拉',14.60,120.98],
+  ['新德里',28.61,77.21], ['孟买',19.08,72.88], ['迪拜',25.20,55.27],
+  ['伊斯坦布尔',41.01,28.98], ['莫斯科',55.76,37.62], ['伦敦',51.51,-0.13],
+  ['巴黎',48.86,2.35], ['柏林',52.52,13.40], ['马德里',40.42,-3.70],
+  ['罗马',41.90,12.50], ['开罗',30.04,31.24], ['拉各斯',6.52,3.38],
+  ['内罗毕',-1.29,36.82], ['约翰内斯堡',-26.20,28.05],
+  ['纽约',40.71,-74.01], ['洛杉矶',34.05,-118.24], ['芝加哥',41.88,-87.63],
+  ['多伦多',43.65,-79.38], ['墨西哥城',19.43,-99.13], ['圣保罗',-23.55,-46.63],
+  ['布宜诺斯艾利斯',-34.60,-58.38], ['利马',-12.05,-77.04],
+  ['悉尼',-33.87,151.21], ['墨尔本',-37.81,144.96], ['奥克兰',-36.85,174.76]
+];
+
+/* 经纬度 → 球面局部坐标（与 toLonLat 严格互逆） */
+function lonLatToVec(lat, lon, r) {
+  const la = lat * Math.PI / 180, lo = lon * Math.PI / 180;
+  return new THREE.Vector3(
+    r * Math.cos(la) * Math.cos(lo),
+    r * Math.sin(la),
+    r * Math.cos(la) * Math.sin(lo)
+  );
+}
+
+const CITY_VERT = `
+  attribute float size;
+  attribute vec3  aColor;
+  attribute float phase;
+  uniform float uPixelRatio, uSizeScale, uTime;
+  uniform vec3  uLightDir;
+  varying vec3  vColor; varying float vA;
+  void main() {
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    vec3 n = normalize(mat3(modelMatrix) * normalize(position));
+    float sun   = smoothstep(-0.12, 0.40, dot(n, uLightDir));
+    float night = 1.0 - sun;
+    float tw    = 0.80 + 0.20 * sin(uTime * 1.7 + phase * 6.2831);
+    vColor = aColor;
+    vA = pow(night, 1.30) * tw;
+    gl_PointSize = size * uSizeScale * uPixelRatio * (9.0 / -mvPosition.z);
+    gl_Position  = projectionMatrix * mvPosition;
+  }`;
+const CITY_FRAG = `
+  varying vec3 vColor; varying float vA;
+  void main() {
+    vec2 uv = gl_PointCoord - 0.5;
+    float d2 = dot(uv, uv);
+    if (d2 > 0.25) discard;
+    float a = smoothstep(0.25, 0.03, d2) * vA;
+    if (a < 0.004) discard;
+    gl_FragColor = vec4(vColor, a);
+  }`;
+
+const cityMat = new THREE.ShaderMaterial({
+  uniforms: { uPixelRatio:{value:renderer.getPixelRatio()}, uSizeScale:{value:1},
+              uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()} },
+  vertexShader: CITY_VERT, fragmentShader: CITY_FRAG,
+  transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending
+});
+
+let cityPoints = null;
+const cityMarks = [];          // { name, local:Vector3, el:HTMLElement }
+const cityLayer = $('cities');
+
+function buildCities() {
+  const R = CFG.radius;
+  const pos = [], col = [], siz = [], pha = [];
+  const c = new THREE.Color();
+  const Y = new THREE.Vector3(0, 1, 0);
+
+  for (const [name, lat, lon] of CITIES) {
+    const base = lonLatToVec(lat, lon, R * 1.012);
+    /* 该点处的切平面正交基 */
+    const n  = base.clone().normalize();
+    const t1 = new THREE.Vector3().crossVectors(Y, n);
+    if (t1.lengthSq() < 1e-6) t1.set(1, 0, 0);   // 极点退化
+    t1.normalize();
+    const t2 = new THREE.Vector3().crossVectors(n, t1).normalize();
+
+    for (let k = 0; k < CFG.cityPer; k++) {
+      /* 中心密集、外缘稀疏的高斯式散布 */
+      const ang = Math.random() * Math.PI * 2;
+      const rad = Math.pow(Math.random(), 1.9) * CFG.citySpread * R;
+      const p = base.clone()
+        .addScaledVector(t1, Math.cos(ang) * rad)
+        .addScaledVector(t2, Math.sin(ang) * rad);
+      const L = R * 1.012 / p.length();
+      p.multiplyScalar(L);
+      pos.push(p.x, p.y, p.z);
+
+      /* 暖金 → 核心偏白，外缘偏橙 */
+      const w = Math.random();
+      c.setHSL(0.105 - w * 0.028, 0.85 - w * 0.30, 0.60 + (1 - Math.random()) * 0.28);
+      col.push(c.r, c.g, c.b);
+      siz.push(0.70 + Math.random() * 0.95);
+      pha.push(Math.random());
+    }
+
+    const el = document.createElement('div');
+    el.className = 'city';
+    el.textContent = name;
+    cityLayer.appendChild(el);
+    cityMarks.push({ name, local: base.clone(), el });
+  }
+
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('aColor',   new THREE.Float32BufferAttribute(col, 3));
+  g.setAttribute('size',     new THREE.Float32BufferAttribute(siz, 1));
+  g.setAttribute('phase',    new THREE.Float32BufferAttribute(pha, 1));
+  g.computeBoundingSphere();
+  if (cityPoints) { spinner.remove(cityPoints); cityPoints.geometry.dispose(); }
+  cityPoints = new THREE.Points(g, cityMat);
+  spinner.add(cityPoints);
+}
+
+/* ── 月球：缓慢公转，自带明暗界线与月海斑块 ─────────────────── */
+let moonPivot = null, moonMesh = null;
+function buildMoon() {
+  const R = CFG.radius;
+  moonPivot = new THREE.Group();
+  moonPivot.rotation.x = THREE.MathUtils.degToRad(11);
+  scene.add(moonPivot);
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { uLightDir: { value: SUN_DIR.clone() } },
+    vertexShader: `
+      varying vec3 vN; varying vec3 vP;
+      void main() {
+        vN = normalize(mat3(modelMatrix) * normal);
+        vP = position;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: `
+      uniform vec3 uLightDir; varying vec3 vN; varying vec3 vP;
+      float hash(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
+      void main() {
+        vec3 n = normalize(vN), sp = normalize(vP);
+        float lit = smoothstep(-0.10, 0.72, dot(n, normalize(uLightDir)));
+        float mare = smoothstep(0.60, 0.94, hash(floor(sp * 8.0))) * 0.32;
+        vec3 base = mix(vec3(0.50, 0.49, 0.47), vec3(0.27, 0.27, 0.29), mare);
+        base += hash(floor(sp * 44.0)) * 0.085 - 0.042;
+        gl_FragColor = vec4(base * (0.05 + 0.95 * lit), 1.0);
+      }`
+  });
+  moonMesh = new THREE.Mesh(new THREE.SphereGeometry(R * CFG.moonRadius, 56, 40), mat);
+  /* 起始位于右下方，且落在相机后方之外，保证一进页面就能看到 */
+  const a = 0.55;
+  moonMesh.position.set(
+    R * CFG.moonDist * Math.sin(a),
+    -R * 0.55,
+    -R * CFG.moonDist * Math.cos(a)
+  );
+  moonPivot.add(moonMesh);
+}
+
 let sunRef = null;
 function buildSun() {
   const p = SUN_DIR.clone().multiplyScalar(SUN_DIST);
@@ -611,8 +838,11 @@ function buildStarfield() {
   buildInterior();
   buildShell();
   await buildSurface(CFG.targetSamples);
+  buildCities();
+  buildMoon();
   buildStarfield();
   buildSun();
+  updateRing();
   setBar(1);
 
   const el = $('loading');
@@ -626,9 +856,61 @@ $('fs').addEventListener('click', () => {
   document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
 });
 
+/* ── 悬浮蓝圈：固定在屏幕中心，地球涨到碰到它时淡出 ─────────── */
+const ringEl = $('ring');
+function ringRadiusPx() {
+  return Math.min(window.innerWidth, window.innerHeight) * CFG.ringRatio;
+}
+function earthRadiusPx() {
+  const d = camera.position.distanceTo(controls.target);
+  const ang = Math.asin(Math.min(0.9995, CFG.radius / Math.max(CFG.radius, d)));
+  return Math.tan(ang) / Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * (window.innerHeight / 2);
+}
+function updateRing() {
+  const r = ringRadiusPx();
+  ringEl.style.width  = (r * 2).toFixed(1) + 'px';
+  ringEl.style.height = (r * 2).toFixed(1) + 'px';
+  ringEl.classList.toggle('on', earthRadiusPx() < r - 4);
+}
+
+/* ── 城市标签投影：只在面向相机 + 夜侧时浮现，并做防重叠剔除 ── */
+const _cw = new THREE.Vector3(), _cn = new THREE.Vector3();
+const _cc = new THREE.Vector3(), _cp = new THREE.Vector3();
+const _taken = [];
+function updateCityLabels() {
+  if (!cityMarks.length) return;
+  const W = window.innerWidth, H = window.innerHeight;
+  const cand = [];
+  for (const m of cityMarks) {
+    _cw.copy(m.local).applyMatrix4(spinner.matrixWorld);
+    _cn.copy(_cw).normalize();
+    _cc.copy(camera.position).sub(_cw).normalize();
+    const facing = _cn.dot(_cc);
+    const night  = 1 - THREE.MathUtils.smoothstep(_cn.dot(SUN_DIR), -0.12, 0.40);
+    if (facing < 0.14 || night < 0.30) { m.el.classList.remove('on'); continue; }
+    _cp.copy(_cw).project(camera);
+    if (_cp.z > 1) { m.el.classList.remove('on'); continue; }
+    cand.push({ m, x: (_cp.x * 0.5 + 0.5) * W, y: (-_cp.y * 0.5 + 0.5) * H, s: facing * night });
+  }
+  cand.sort((a, b) => b.s - a.s);
+  _taken.length = 0;
+  for (const c of cand) {
+    let clash = false;
+    for (const t of _taken) {
+      const dx = c.x - t.x, dy = c.y - t.y;
+      if (dx * dx + dy * dy < 38 * 38) { clash = true; break; }
+    }
+    if (clash) { c.m.el.classList.remove('on'); continue; }
+    _taken.push(c);
+    c.m.el.style.transform =
+      'translate(-50%,-50%) translate(' + c.x.toFixed(1) + 'px,' + (c.y - 12).toFixed(1) + 'px)';
+    c.m.el.classList.add('on');
+  }
+}
+
 let autoSpin = true;
 const clock = new THREE.Clock();
-let spinY = 0, fpsT = 0, fpsN = 0;
+let spinY = 0, fpsT = 0, fpsN = 0, uiTick = 0;
 
 function animate() {
   requestAnimationFrame(animate);
@@ -643,9 +925,27 @@ function animate() {
   fogMat.uniforms.uTime.value   = t;
   mistMat.uniforms.uTime.value  = t;
   shellMat.uniforms.uTime.value = t;
+  cityMat.uniforms.uTime.value  = t;
 
   if (starfield) { starfield.material.uniforms.uTime.value = t; starfield.rotation.y = t * 0.004; }
   if (sunRef) { const p = 1 + 0.035 * Math.sin(t * 1.1); sunRef.glow.scale.set(80 * p, 80 * p, 1); }
+
+  /* 月球缓慢公转；转到离相机过近时收缩淡出，避免糊住画面 */
+  if (moonPivot) {
+    moonPivot.rotation.y += dt * CFG.moonSpeed;
+    moonMesh.getWorldPosition(_cw);
+    const dist = _cw.distanceTo(camera.position);
+    const k = THREE.MathUtils.clamp((dist - 2.6) / 2.2, 0, 1);
+    moonMesh.scale.setScalar(k);
+    moonMesh.visible = k > 0.02;
+  }
+
+  /* UI 层每 2 帧刷新一次即可 */
+  if ((uiTick++ & 1) === 0) {
+    spinner.updateMatrixWorld(true);
+    updateCityLabels();
+    updateRing();
+  }
 
   fpsN++; fpsT += dt;
   if (fpsT >= 0.5) { $('s-fps').textContent = Math.round(fpsN / fpsT); fpsN = 0; fpsT = 0; }
@@ -665,8 +965,107 @@ window.addEventListener('resize', () => {
   fogMat.uniforms.uPixelRatio.value   = pr;
   mistMat.uniforms.uPixelRatio.value  = pr;
   shellMat.uniforms.uPixelRatio.value = pr;
+  cityMat.uniforms.uPixelRatio.value  = pr;
   if (starfield) starfield.material.uniforms.uPixelRatio.value = pr;
+  updateRing();
 });
+
+/* ── 可选：MediaPipe 手势捏合缩放（默认关闭，点击 HUD 开启） ──── */
+const MP_VER = '0.4.1675469240';
+let handOn = false, pinchPrev = null, pinchT = 0;
+
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.crossOrigin = 'anonymous';
+    s.onload = res; s.onerror = () => rej(new Error('加载失败 ' + src));
+    document.head.appendChild(s);
+  });
+}
+function setCamState(cls, text) {
+  $('cam-s').className = 's' + (cls ? ' ' + cls : '');
+  $('cam-t').textContent = text;
+}
+
+function onHandResults(res) {
+  const lm = res.multiHandLandmarks && res.multiHandLandmarks[0];
+  if (!lm) { pinchPrev = null; return; }
+  const a = lm[4], b = lm[8];                       // 拇指尖 / 食指尖
+  const d = Math.hypot(a.x - b.x, a.y - b.y);
+  const now = performance.now();
+  if (pinchPrev !== null && now - pinchT < 400) {
+    const delta = d - pinchPrev;
+    if (Math.abs(delta) > 0.004 && Math.abs(delta) < 0.12) {
+      const dist = camera.position.distanceTo(controls.target);
+      const nd = THREE.MathUtils.clamp(dist * (1 - delta * 2.6), controls.minDistance, controls.maxDistance);
+      camera.position.sub(controls.target).multiplyScalar(nd / dist).add(controls.target);
+    }
+  }
+  pinchPrev = d; pinchT = now;
+}
+
+async function enableHands() {
+  if (handOn) return;
+  handOn = true;
+  const btn = $('s-hand');
+  btn.textContent = '加载中…';
+  $('cam').classList.add('on');
+  setCamState('', '加载模型…');
+
+  try {
+    if (typeof window.Hands === 'undefined')
+      await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/hands@' + MP_VER + '/hands.js');
+    if (typeof window.Camera === 'undefined')
+      await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@' + MP_VER + '/camera_utils.js');
+    if (typeof window.Hands === 'undefined') throw new Error('MediaPipe 未就绪');
+  } catch (e) {
+    console.warn('[Hands] 模型加载失败', e);
+    setCamState('err', '模型加载失败'); btn.textContent = '重试'; handOn = false; return;
+  }
+
+  const video = $('camv');
+  let hands;
+  try {
+    hands = new window.Hands({
+      locateFile: (f) => 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@' + MP_VER + '/' + f
+    });
+    hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.6, minTrackingConfidence: 0.55 });
+    hands.onResults(onHandResults);
+  } catch (e) {
+    console.warn('[Hands] 初始化失败', e);
+    setCamState('err', '初始化失败'); btn.textContent = '重试'; handOn = false; return;
+  }
+
+  try {
+    const cam = new window.Camera(video, {
+      onFrame: async () => { try { await hands.send({ image: video }); } catch (e) {} },
+      width: 320, height: 240
+    });
+    await cam.start();
+    setCamState('ok', '已就绪'); btn.textContent = '已开启';
+  } catch (e) {
+    console.warn('[Hands] 摄像头不可用', e);
+    setCamState('err', '摄像头不可用'); btn.textContent = '重试'; handOn = false;
+  }
+}
+$('s-hand').addEventListener('click', () => { enableHands(); });
+
+/* 摄像头窗口可拖拽缩放 */
+(() => {
+  const v = $('camv'), h = $('cam-r');
+  let dragging = false, sx = 0, sw = 0;
+  h.addEventListener('pointerdown', (e) => {
+    dragging = true; sx = e.clientX; sw = v.clientWidth;
+    h.setPointerCapture(e.pointerId); e.stopPropagation(); e.preventDefault();
+  });
+  h.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const w = Math.max(120, Math.min(520, sw + (e.clientX - sx)));
+    v.style.width = w + 'px'; v.style.height = (w * 0.75) + 'px';
+  });
+  h.addEventListener('pointerup', () => { dragging = false; });
+  h.addEventListener('pointercancel', () => { dragging = false; });
+})();
 
 /* 备用判定：d3.geoContains（真实球面几何，单次约 39ms）。
    注意：world-atlas 的 land-10m 环缠绕方向与 d3 的球面约定不一致，
