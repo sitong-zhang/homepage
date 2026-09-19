@@ -136,6 +136,7 @@ footer{text-align:center;color:#5c6f9c;font-size:11.5px;padding:26px 0 10px;line
   <div class="tabs">
     <button class="tab on" id="t1" onclick="sw(1)"><span class="ic" data-i="package"></span>APK 下载</button>
     <button class="tab" id="t2" onclick="sw(2)"><span class="ic" data-i="folder"></span>文件托管</button>
+    <button class="tab" id="t3" onclick="sw(3)"><span class="ic" data-i="globe"></span>3D 地球</button>
   </div>
 
   <!-- APK 区 -->
@@ -164,6 +165,10 @@ footer{text-align:center;color:#5c6f9c;font-size:11.5px;padding:26px 0 10px;line
     </div>
 
     <div class="note">请勿上传违法违规内容；重要文件请自行留存备份。</div>
+  </div>
+
+<div class="view" id="v3">
+    <iframe id="earthframe" style="width:100%;height:74vh;border:0;border-radius:14px;background:#000206;display:block" title="3D 地球"></iframe>
   </div>
 
   <footer>© 2026 ZJT 分发站</footer>
@@ -248,11 +253,19 @@ loadAnn();
 
 /* ================= Tabs ================= */
 function sw(n){
-  for(let i=1;i<=2;i++){
+  for(let i=1;i<=3;i++){
     document.getElementById('t'+i).classList.toggle('on',i===n);
     document.getElementById('v'+i).classList.toggle('on',i===n);
   }
   if(n===2)loadPublic();
+  if(n===3)initEarth();
+}
+
+let earthLoaded=false;
+function initEarth(){
+  if(earthLoaded)return;
+  document.getElementById('earthframe').src='earth.html';
+  earthLoaded=true;
 }
 
 /* ================= APK 区 ================= */

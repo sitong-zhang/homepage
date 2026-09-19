@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>真实粒子地球 · Accurate Particle Earth</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: #000206;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  }
+  canvas { display: block; }
+
+  #loading {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 22px;
+    background: radial-gradient(circle at 50% 50%, #041020 0%, #000206 70%);
+    color: #6ab7ff;
+    font-size: 13px;
+    letter-spacing: 0.35em;
+    text-indent: 0.35em;
+    transition: opacity 0.9s ease;
+  }
+  #loading.hide { opacity: 0; pointer-events: none; }
+
+  .loader-ring {
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(80, 150, 255, 0.15);
+    border-top-color: #4a9eff;
+    border-right-color: #4a9eff;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #progress {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: rgba(100, 160, 240, 0.5);
+    font-variant-numeric: tabular-nums;
+    min-height: 16px;
+  }
+
+  #hint {
+    position: fixed;
+    bottom: 22px; left: 50%;
+    transform: translateX(-50%);
+    color: rgba(130, 180, 255, 0.32);
+    font-size: 11.5px;
+    letter-spacing: 0.18em;
+    pointer-events: none;
+    user-select: none;
+    white-space: nowrap;
+    transition: opacity 1.2s ease 2s;
+    opacity: 0;
+  }
+  #hint.show { opacity: 1; }
+
+  #status {
+    position: fixed;
+    top: 16px; left: 16px;
+    color: rgba(120, 170, 230, 0.28);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    pointer-events: none;
+    user-select: none;
+  }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="loader-ring"></div>
+  <div>加载高精度陆地数据</div>
+  <div id="progress"></div>
+</div>
+
+<div id="hint">拖动旋转 · 滚轮缩放 · 转到背面可见太阳</div>
+<div id="status"></div>
+
+<!-- ===== 全局脚本：TopoJSON 与 D3-Geo ===== -->
+<script src="./vendor/topojson-client.min.js"></script>
+<script src="./vendor/d3-array.min.js"></script>
+<script src="./vendor/d3-geo.min.js"></script>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/build/three.module.js",
+    "three/addons/": "./vendor/three/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls }   from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer }  from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass }      from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass }      from 'three/addons/postprocessing/OutputPass.js';
+
+/* ============================================================
+   0. 全局配置
+   ============================================================ */
+const CFG = {
+  radius        : 2.0,
+  targetSamples : 200000,   // 球面目标采样数（最终粒子数 ≈ 陆地占比 × 此值）
+  oceanKeep     : 0.02,     // 海洋粒子保留率（极低，仅作轮廓暗示）
+};
+
+// 太阳方向（世界空间，地球 → 太阳）
+const SUN_DIR   = new THREE.Vector3(0.60, 0.28, 0.75).normalize();
+const SUN_DIST  = 260;
+const SUN_RADIUS = 8;
+
+/* ============================================================
+   1. 渲染器 / 场景 / 相机
+   ============================================================ */
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  powerPreference: 'high-performance',
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000206);
+
+const camera = new THREE.PerspectiveCamera(
+  50, window.innerWidth / window.innerHeight, 0.1, 4000
+);
+camera.position.set(0, 1.6, 6.8);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.055;
+controls.rotateSpeed   = 0.65;
+controls.zoomSpeed     = 0.8;
+controls.minDistance   = 3.2;
+controls.maxDistance   = 24;
+controls.enablePan     = false;
+controls.target.set(0, 0, 0);
+
+/* ============================================================
+   2. 高精度陆地数据 —— Natural Earth 1:10m
+      使用 TopoJSON → GeoJSON → d3.geoContains 精确判定
+   ============================================================ */
+const progressEl = document.getElementById('progress');
+
+function setProgress(text) {
+  progressEl.textContent = text;
+}
+
+async function loadLandGeoJSON() {
+  const URLS = [
+    './vendor/land-10m.json',
+  ];
+
+  for (const url of URLS) {
+    try {
+      setProgress('下载 1:10m 陆地边界…');
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const topo = await res.json();
+
+      // TopoJSON → GeoJSON MultiPolygon
+      const land = topojson.feature(topo, topo.objects.land);
+      console.log('[Earth] ✓ Natural Earth 1:10m 陆地数据已加载');
+      return land;
+    } catch (e) {
+      console.warn('[Earth] 源失败:', url, e);
+    }
+  }
+  return null;
+}
+
+/* ============================================================
+   3. 几何工具
+   ============================================================ */
+// 球面均匀采样（Fibonacci）
+function fibSphere(i, n) {
+  const y     = 1 - (i / (n - 1)) * 2;
+  const r     = Math.sqrt(Math.max(0, 1 - y * y));
+  const theta = i * Math.PI * (3 - Math.sqrt(5));
+  return [Math.cos(theta) * r, y, Math.sin(theta) * r];
+}
+
+// 笛卡尔 → 经纬度（度）
+function toLonLat(x, y, z) {
+  const len = Math.sqrt(x * x + y * y + z * z) || 1;
+  const nx = x / len, ny = y / len, nz = z / len;
+  const lon = Math.atan2(nz, nx) * 180 / Math.PI;          // -180 .. 180
+  const lat = Math.asin(Math.max(-1, Math.min(1, ny))) * 180 / Math.PI; // -90 .. 90
+  return [lon, lat];
+}
+
+/* ============================================================
+   4. 着色器
+   ------------------------------------------------------------
+   光照固定在世界空间指向太阳；
+   粒子为圆形点，带柔和发光。
+   ============================================================ */
+const VERT = /* glsl */`
+  attribute float size;
+  attribute vec3  aColor;
+
+  uniform float uPixelRatio;
+  uniform float uSizeScale;
+  uniform vec3  uLightDir;      // 世界空间：星球 → 太阳
+
+  varying vec3  vColor;
+
+  void main() {
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+
+    // 世界空间法线（球面方向即法线）
+    vec3 n = normalize(mat3(modelMatrix) * normalize(position));
+
+    // 太阳漫反射（柔和明暗交界）
+    float d   = dot(n, uLightDir);
+    float sun = smoothstep(-0.08, 0.55, d);
+
+    // 受光面：暖白；背光面：极暗冷蓝
+    vec3 tint = mix(vec3(0.08, 0.11, 0.18), vec3(1.0, 0.97, 0.92), sun);
+
+    vColor = aColor * tint;
+
+    gl_PointSize = size * uSizeScale * uPixelRatio * (26.0 / -mvPosition.z);
+    gl_Position  = projectionMatrix * mvPosition;
+  }
+`;
+
+const FRAG = /* glsl */`
+  varying vec3 vColor;
+
+  void main() {
+    // 圆形点 + 柔和边缘
+    vec2  uv = gl_PointCoord - 0.5;
+    float d2 = dot(uv, uv);
+    if (d2 > 0.25) discard;
+
+    float a = smoothstep(0.25, 0.02, d2);
+    gl_FragColor = vec4(vColor, a);
+  }
+`;
+
+/* ============================================================
+   5. 构建粒子地球
+   ============================================================ */
+function buildEarth(landGeo) {
+  const N = CFG.targetSamples;
+  const R = CFG.radius;
+
+  const posArr  = [];
+  const colArr  = [];
+  const sizeArr = [];
+
+  const col = new THREE.Color();
+
+  // 预缓存陆地 MultiPolygon（d3.geoContains 接受 Feature 或 Geometry）
+  const landFeature = landGeo;
+
+  let checked = 0;
+  let landCount = 0;
+  let oceanCount = 0;
+
+  for (let i = 0; i < N; i++) {
+    const [x, y, z] = fibSphere(i, N);
+
+    // 每隔一定数量更新进度
+    if (i % 8000 === 0) {
+      setProgress(`采样陆地粒子… ${Math.round(i / N * 100)}%`);
+    }
+
+    // 经纬度判定
+    const [lon, lat] = toLonLat(x, y, z);
+    const isLand = d3.geoContains(landFeature, [lon, lat]);
+
+    checked++;
+
+    if (isLand) {
+      landCount++;
+    } else {
+      // 海洋：极低概率保留，仅作轮廓暗示
+      if (Math.random() > CFG.oceanKeep) continue;
+      oceanCount++;
+    }
+
+    // 半径微抖动，形成薄壳
+    const jitter = 1 + (Math.random() - 0.5) * 0.008;
+    const rr     = R * jitter * (isLand ? 1.006 : 1.0);
+
+    posArr.push(x * rr, y * rr, z * rr);
+
+    if (isLand) {
+      // 陆地：青蓝 → 浅冰蓝，带纬度变化
+      const t = Math.random();
+      const latFactor = Math.abs(lat) / 90; // 极地更白
+      col.setHSL(
+        0.540 + t * 0.040 - latFactor * 0.02,
+        0.65  - t * 0.30 - latFactor * 0.25,
+        0.52  + t * 0.14 + latFactor * 0.12
+      );
+    } else {
+      // 海洋：深蓝
+      const t = Math.random();
+      col.setHSL(0.610 + t * 0.030, 0.88, 0.10 + t * 0.08);
+    }
+
+    colArr.push(col.r, col.g, col.b);
+
+    // 粒子大小：陆地更大，海洋极小
+    sizeArr.push(
+      isLand
+        ? 1.30 + Math.random() * 0.90
+        : 0.50 + Math.random() * 0.30
+    );
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(posArr, 3));
+  geo.setAttribute('aColor',   new THREE.Float32BufferAttribute(colArr, 3));
+  geo.setAttribute('size',     new THREE.Float32BufferAttribute(sizeArr, 1));
+  geo.computeBoundingSphere();
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      uPixelRatio : { value: renderer.getPixelRatio() },
+      uSizeScale  : { value: 1.0 },
+      uLightDir   : { value: SUN_DIR.clone() },
+    },
+    vertexShader   : VERT,
+    fragmentShader : FRAG,
+    transparent    : true,
+    depthWrite     : true,
+    depthTest      : true,
+    blending       : THREE.NormalBlending,
+  });
+
+  const points = new THREE.Points(geo, mat);
+
+  // 地轴倾角 23.5°
+  const group = new THREE.Group();
+  group.rotation.z = THREE.MathUtils.degToRad(23.5);
+  group.add(points);
+  scene.add(group);
+
+  console.log(
+    `[Earth] 采样 ${checked} 点 · 陆地 ${landCount} · 海洋 ${oceanCount} · ` +
+    `最终粒子 ${posArr.length / 3}`
+  );
+
+  return { points, mat, group, count: posArr.length / 3, landCount };
+}
+
+/* ============================================================
+   6. 远处太阳
+   ============================================================ */
+function makeGlowTexture() {
+  const S = 256;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = S;
+  const ctx = cv.getContext('2d');
+
+  const g = ctx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+  g.addColorStop(0.00, 'rgba(255, 250, 235, 1.00)');
+  g.addColorStop(0.14, 'rgba(255, 225, 170, 0.72)');
+  g.addColorStop(0.34, 'rgba(255, 180,  95, 0.24)');
+  g.addColorStop(0.62, 'rgba(255, 140,  50, 0.07)');
+  g.addColorStop(1.00, 'rgba(255, 110,  20, 0.00)');
+
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, S, S);
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+function buildSun() {
+  const sunPos = SUN_DIR.clone().multiplyScalar(SUN_DIST);
+
+  // 核心
+  const coreGeo = new THREE.SphereGeometry(SUN_RADIUS, 32, 32);
+  const coreMat = new THREE.MeshBasicMaterial({ color: 0xfff4dd });
+  const core = new THREE.Mesh(coreGeo, coreMat);
+  core.position.copy(sunPos);
+  scene.add(core);
+
+  // 光晕
+  const glowMat = new THREE.SpriteMaterial({
+    map        : makeGlowTexture(),
+    color      : 0xffd9a0,
+    blending   : THREE.AdditiveBlending,
+    transparent: true,
+    depthWrite : false,
+    depthTest  : true,
+  });
+  const glow = new THREE.Sprite(glowMat);
+  glow.position.copy(sunPos);
+  glow.scale.set(80, 80, 1);
+  scene.add(glow);
+
+  return { core, glow, pos: sunPos };
+}
+
+/* ============================================================
+   7. 深空背景星尘
+   ============================================================ */
+function buildStarfield() {
+  const COUNT = 4500;
+  const pos = new Float32Array(COUNT * 3);
+  const col = new Float32Array(COUNT * 3);
+  const siz = new Float32Array(COUNT);
+  const pha = new Float32Array(COUNT);
+
+  const c = new THREE.Color();
+
+  for (let i = 0; i < COUNT; i++) {
+    const r     = 60 + Math.pow(Math.random(), 0.6) * 700;
+    const theta = Math.random() * Math.PI * 2;
+    const phi   = Math.acos(2 * Math.random() - 1);
+
+    pos[i * 3    ] = r * Math.sin(phi) * Math.cos(theta);
+    pos[i * 3 + 1] = r * Math.cos(phi);
+    pos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+
+    c.setHSL(Math.random(), 0.60, 0.14 + Math.random() * 0.20);
+    col[i * 3    ] = c.r;
+    col[i * 3 + 1] = c.g;
+    col[i * 3 + 2] = c.b;
+
+    siz[i] = 0.7 + Math.random() * 2.0;
+    pha[i] = Math.random() * Math.PI * 2;
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('aColor',   new THREE.BufferAttribute(col, 3));
+  geo.setAttribute('size',     new THREE.BufferAttribute(siz, 1));
+  geo.setAttribute('phase',    new THREE.BufferAttribute(pha, 1));
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      uTime       : { value: 0 },
+      uPixelRatio : { value: renderer.getPixelRatio() },
+    },
+    vertexShader: /* glsl */`
+      attribute float size;
+      attribute float phase;
+      attribute vec3  aColor;
+
+      uniform float uTime;
+      uniform float uPixelRatio;
+
+      varying vec3  vColor;
+      varying float vAlpha;
+
+      void main() {
+        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        vColor = aColor;
+        vAlpha = 0.35 + 0.55 * (0.5 + 0.5 * sin(uTime * 0.85 + phase));
+        gl_PointSize = size * uPixelRatio * (18.0 / -mvPosition.z);
+        gl_Position  = projectionMatrix * mvPosition;
+      }
+    `,
+    fragmentShader: /* glsl */`
+      varying vec3  vColor;
+      varying float vAlpha;
+      void main() {
+        vec2  uv = gl_PointCoord - 0.5;
+        float d2 = dot(uv, uv);
+        if (d2 > 0.25) discard;
+        float a = smoothstep(0.25, 0.0, d2);
+        gl_FragColor = vec4(vColor, a * vAlpha);
+      }
+    `,
+    transparent : true,
+    depthWrite  : false,
+    blending    : THREE.AdditiveBlending,
+  });
+
+  const pts = new THREE.Points(geo, mat);
+  scene.add(pts);
+  return pts;
+}
+
+/* ============================================================
+   8. 后期处理
+   ============================================================ */
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  0.45,   // strength —— 柔和
+  0.55,   // radius
+  0.78    // threshold —— 高，仅太阳触发
+);
+composer.addPass(bloomPass);
+composer.addPass(new OutputPass());
+
+/* ============================================================
+   9. 初始化
+   ============================================================ */
+let earth     = null;
+let starfield = null;
+let sunRef    = null;
+
+(async () => {
+  const landGeo = await loadLandGeoJSON();
+
+  if (!landGeo) {
+    console.error('[Earth] 无法加载陆地数据');
+    setProgress('陆地数据加载失败');
+    return;
+  }
+
+  setProgress('生成粒子…');
+  earth     = buildEarth(landGeo);
+  starfield = buildStarfield();
+  sunRef    = buildSun();
+
+  document.getElementById('status').textContent =
+    `Natural Earth 1:10m · ${earth.count.toLocaleString()} 颗粒子`;
+
+  const el = document.getElementById('loading');
+  el.classList.add('hide');
+  setTimeout(() => el.remove(), 1000);
+  document.getElementById('hint').classList.add('show');
+
+  console.log(
+    `%c✦ 真实粒子地球就绪 · ${earth.count.toLocaleString()} 颗粒子 · ` +
+    `陆地采样 ${earth.landCount.toLocaleString()} 点`,
+    'color:#4a9eff;font-size:13px;font-weight:600;'
+  );
+})();
+
+/* ============================================================
+   10. 主循环
+   ============================================================ */
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  const t = clock.getElapsedTime();
+  controls.update();
+
+  if (earth) {
+    earth.points.rotation.y = t * 0.05;
+  }
+
+  if (starfield) {
+    starfield.material.uniforms.uTime.value = t;
+    starfield.rotation.y = t * 0.004;
+  }
+
+  if (sunRef) {
+    const pulse = 1 + 0.035 * Math.sin(t * 1.1);
+    sunRef.glow.scale.set(80 * pulse, 80 * pulse, 1);
+  }
+
+  composer.render();
+}
+
+animate();
+
+/* ============================================================
+   11. 自适应
+   ============================================================ */
+window.addEventListener('resize', () => {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+
+  composer.setSize(w, h);
+  bloomPass.setSize(w, h);
+
+  const pr = renderer.getPixelRatio();
+  if (earth)     earth.mat.uniforms.uPixelRatio.value = pr;
+  if (starfield) starfield.material.uniforms.uPixelRatio.value = pr;
+});
+</script>
+</body>
+</html>
