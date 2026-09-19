@@ -46,21 +46,6 @@
   #hud .k { display: flex; justify-content: space-between; gap: 16px; line-height: 1.85; }
   #hud .k b { color: #e8eefc; font-weight: 500; font-variant-numeric: tabular-nums; }
 
-  #ctl { right: 16px; top: 16px; width: 232px; padding: 13px 15px; }
-  #ctl h4 { margin: 0 0 11px; font-size: 11.5px; font-weight: 600; letter-spacing: .12em; color: #dce9ff; }
-  .row { margin-bottom: 11px; }
-  .row label { display: flex; justify-content: space-between; font-size: 11px; color: #8ea0c4; margin-bottom: 5px; }
-  .row label b { color: #e8eefc; font-weight: 500; font-variant-numeric: tabular-nums; }
-  input[type=range] { width: 100%; height: 3px; -webkit-appearance: none; appearance: none; border-radius: 99px;
-    background: rgba(255,255,255,.14); outline: none; cursor: pointer; }
-  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%;
-    background: #4a9eff; border: 2px solid #06101f; }
-  input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border: 2px solid #06101f; border-radius: 50%; background: #4a9eff; }
-  input[type=color] { width: 100%; height: 25px; padding: 0; border: 1px solid rgba(120,170,230,.2);
-    border-radius: 7px; background: transparent; cursor: pointer; }
-  .chk { display: flex; align-items: center; gap: 7px; font-size: 11px; color: #8ea0c4; cursor: pointer; }
-  .chk input { accent-color: #4a9eff; cursor: pointer; }
-
   #fs { right: 16px; bottom: 16px; width: 44px; height: 44px; display: flex; align-items: center;
     justify-content: center; cursor: pointer; color: #cfe2ff; transition: .2s; }
   #fs:hover { background: rgba(80,150,255,.14); border-color: rgba(80,150,255,.45); }
@@ -73,7 +58,6 @@
   #hint.show { opacity: 1; }
   #hint.gone { opacity: 0 !important; }
   @media (max-width: 720px) {
-    #ctl { width: 186px; top: 12px; right: 12px; padding: 11px 12px; }
     #hud { left: 12px; bottom: 12px; min-width: 0; padding: 9px 11px; }
     #hint { display: none; }
   }
@@ -96,23 +80,6 @@
   <div class="k"><span>陆地采样</span><b id="s-land">—</b></div>
   <div class="k"><span>数据源</span><b id="s-src">—</b></div>
   <div class="k"><span>FPS</span><b id="s-fps">—</b></div>
-</div>
-
-<div id="ctl" class="panel">
-  <h4>粒子控制</h4>
-  <div class="row">
-    <label>基础颜色 <b id="v-color">#2f9bff</b></label>
-    <input id="c-color" type="color" value="#2f9bff" />
-  </div>
-  <div class="row">
-    <label>采样密度 <b id="v-den">200k</b></label>
-    <input id="c-den" type="range" min="60000" max="260000" step="20000" value="200000" />
-  </div>
-  <div class="row">
-    <label>粒子大小 <b id="v-size">1.00×</b></label>
-    <input id="c-size" type="range" min="0.6" max="2.0" step="0.05" value="1" />
-  </div>
-  <label class="chk"><input id="c-spin" type="checkbox" checked /> 自转（23.5° 地轴倾角）</label>
 </div>
 
 <div id="fs" class="panel" title="全屏">
@@ -146,8 +113,11 @@ const CFG = {
   radius        : 2.0,
   targetSamples : 200000,
   oceanKeep     : 0.02,
-  fogCount      : 60000,
-  mistCount     : 120000
+  fogCount      : 90000,    // 内部雾体（Normal 混合，把内部填满）
+  mistCount     : 150000,   // 内部辉光雾（Additive）
+  shellCount    : 28000,    // 外层「防护罩」雾壳
+  shellInner    : 1.02,     // 雾壳内半径（×R）
+  shellOuter    : 1.22      // 雾壳外半径（×R）
 };
 
 const SUN_DIR    = new THREE.Vector3(0.60, 0.28, 0.75).normalize();
@@ -330,15 +300,16 @@ function toLonLat(x, y, z) {
 }
 
 let baseHSL = { h: 0, s: 0, l: 0 };
-new THREE.Color('#2f9bff').getHSL(baseHSL);
+new THREE.Color('#3aa8ff').getHSL(baseHSL);
 const _c = new THREE.Color();
 
+/* 陆地：赤道深蓝 → 极地浅冰蓝（整体偏亮，避免画面发灰） */
 function landColor(lat) {
   const t = Math.min(1, Math.abs(lat) / 90);
-  return _c.setHSL((baseHSL.h + t * 0.025) % 1, 0.95 - t * 0.48, 0.54 + t * 0.34);
+  return _c.setHSL((baseHSL.h + t * 0.025) % 1, 0.95 - t * 0.42, 0.62 + t * 0.30);
 }
 function oceanColor() {
-  return _c.setHSL((baseHSL.h + 0.03) % 1, 0.90, 0.24);
+  return _c.setHSL((baseHSL.h + 0.03) % 1, 0.90, 0.32);
 }
 
 const VERT = `
@@ -398,12 +369,18 @@ const surfMat = new THREE.ShaderMaterial({
   transparent: true, depthWrite: true, depthTest: true, blending: THREE.NormalBlending
 });
 const fogMat = new THREE.ShaderMaterial({
-  uniforms: { uPixelRatio:{value:renderer.getPixelRatio()}, uSizeScale:{value:1}, uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()}, uOpacity:{value:0.10} },
+  uniforms: { uPixelRatio:{value:renderer.getPixelRatio()}, uSizeScale:{value:1}, uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()}, uOpacity:{value:0.17} },
   vertexShader: VERT, fragmentShader: FOG_FRAG,
   transparent: true, depthWrite: false, depthTest: true, blending: THREE.NormalBlending
 });
 const mistMat = new THREE.ShaderMaterial({
-  uniforms: { uPixelRatio:{value:renderer.getPixelRatio()}, uSizeScale:{value:1}, uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()}, uOpacity:{value:0.09} },
+  uniforms: { uPixelRatio:{value:renderer.getPixelRatio()}, uSizeScale:{value:1}, uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()}, uOpacity:{value:0.13} },
+  vertexShader: VERT, fragmentShader: FOG_FRAG,
+  transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending
+});
+/* 外层「防护罩」雾壳：大而极淡的软粒子，加色混合成一层球状薄雾 */
+const shellMat = new THREE.ShaderMaterial({
+  uniforms: { uPixelRatio:{value:renderer.getPixelRatio()}, uSizeScale:{value:1}, uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()}, uOpacity:{value:0.075} },
   vertexShader: VERT, fragmentShader: FOG_FRAG,
   transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending
 });
@@ -425,27 +402,74 @@ function buildInterior() {
     const rr = Math.sqrt(Math.max(0, 1 - u * u));
     return [rr * Math.cos(th), u, rr * Math.sin(th)];
   };
+  /* 从球心附近一直填到表面下方，确保内部不是空的 */
   for (let j = 0; j < CFG.fogCount; j++) {
     const [dx, dy, dz] = rnd();
-    const r = R * (0.30 + 0.685 * Math.cbrt(Math.random()));
+    const r = R * (0.16 + 0.82 * Math.cbrt(Math.random()));
     fPos.push(dx * r, dy * r, dz * r);
-    col.setHSL(baseHSL.h, 0.85, 0.10 + Math.random() * 0.06);
+    col.setHSL(baseHSL.h, 0.85, 0.12 + Math.random() * 0.07);
     fCol.push(col.r, col.g, col.b);
-    fSiz.push(1.10 + Math.random() * 1.10);
+    fSiz.push(1.20 + Math.random() * 1.30);
   }
   for (let j = 0; j < CFG.mistCount; j++) {
     const [dx, dy, dz] = rnd();
-    const r = R * (0.35 + 0.64 * Math.cbrt(Math.random()));
+    const r = R * (0.20 + 0.79 * Math.cbrt(Math.random()));
     mPos.push(dx * r, dy * r, dz * r);
-    col.setHSL(baseHSL.h, 0.90, 0.040 + Math.random() * 0.050);
+    col.setHSL(baseHSL.h, 0.90, 0.050 + Math.random() * 0.060);
     mCol.push(col.r, col.g, col.b);
-    mSiz.push(0.90 + Math.random() * 0.90);
+    mSiz.push(1.00 + Math.random() * 1.00);
   }
   if (fogPoints)  { spinner.remove(fogPoints);  fogPoints.geometry.dispose(); }
   if (mistPoints) { spinner.remove(mistPoints); mistPoints.geometry.dispose(); }
   fogPoints  = makePoints(fPos, fCol, fSiz, fogMat);
   mistPoints = makePoints(mPos, mCol, mSiz, mistMat);
   spinner.add(fogPoints); spinner.add(mistPoints);
+}
+
+/* 外层「防护罩」：贴着球面外的一层球状雾壳（不随自转，保持稳定罩感） */
+let shellPoints = null, shellMesh = null;
+function buildShell() {
+  const R = CFG.radius, col = new THREE.Color();
+  const pos = [], c = [], s = [];
+  for (let j = 0; j < CFG.shellCount; j++) {
+    const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2;
+    const rr = Math.sqrt(Math.max(0, 1 - u * u));
+    const dx = rr * Math.cos(th), dy = u, dz = rr * Math.sin(th);
+    const r = R * (CFG.shellInner + (CFG.shellOuter - CFG.shellInner) * Math.pow(Math.random(), 0.7));
+    pos.push(dx * r, dy * r, dz * r);
+    col.setHSL(baseHSL.h, 0.90, 0.30 + Math.random() * 0.22);
+    c.push(col.r, col.g, col.b);
+    s.push(2.4 + Math.random() * 2.6);
+  }
+  if (shellPoints) { tilt.remove(shellPoints); shellPoints.geometry.dispose(); }
+  shellPoints = makePoints(pos, c, s, shellMat);
+  tilt.add(shellPoints);
+
+  /* 再叠一层极淡的菲涅尔球壳，做出「罩子」的边缘轮廓 */
+  if (!shellMesh) {
+    shellMesh = new THREE.Mesh(
+      new THREE.SphereGeometry(R * CFG.shellOuter * 1.06, 64, 48),
+      new THREE.ShaderMaterial({
+        uniforms: { uColor: { value: new THREE.Color(0x3aa8ff) }, uPower: { value: 3.2 }, uStrength: { value: 0.55 } },
+        vertexShader: `
+          varying vec3 vN;
+          void main() {
+            vN = normalize(normalMatrix * normal);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }`,
+        fragmentShader: `
+          uniform vec3 uColor; uniform float uPower, uStrength;
+          varying vec3 vN;
+          void main() {
+            float f = pow(max(0.0, 0.72 - dot(vN, vec3(0.0, 0.0, 1.0))), uPower);
+            gl_FragColor = vec4(uColor * f * uStrength, f * uStrength);
+          }`,
+        transparent: true, blending: THREE.AdditiveBlending,
+        side: THREE.BackSide, depthWrite: false
+      })
+    );
+    tilt.add(shellMesh);
+  }
 }
 
 async function buildSurface(N) {
@@ -582,6 +606,7 @@ function buildStarfield() {
   setProgress('光栅化陆地边界…'); setBar(0.8); await frame();
   landTable = rasterizeLand(got.land);
   buildInterior();
+  buildShell();
   await buildSurface(CFG.targetSamples);
   buildStarfield();
   buildSun();
@@ -594,25 +619,6 @@ function buildStarfield() {
   setTimeout(() => $('hint').classList.add('gone'), 7000);
 })();
 
-let colorTimer = null;
-$('c-color').addEventListener('input', (e) => {
-  $('v-color').textContent = e.target.value;
-  new THREE.Color(e.target.value).getHSL(baseHSL);
-  clearTimeout(colorTimer);
-  colorTimer = setTimeout(() => { buildSurface(CFG.targetSamples); buildInterior(); }, 220);
-});
-$('c-den').addEventListener('change', (e) => {
-  const n = +e.target.value;
-  CFG.targetSamples = n;
-  $('v-den').textContent = (n / 1000) + 'k';
-  buildSurface(n);
-});
-$('c-size').addEventListener('input', (e) => {
-  const v = +e.target.value;
-  $('v-size').textContent = v.toFixed(2) + '×';
-  surfMat.uniforms.uSizeScale.value = v;
-});
-$('c-spin').addEventListener('change', (e) => { autoSpin = e.target.checked; });
 $('fs').addEventListener('click', () => {
   document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
 });
@@ -630,9 +636,10 @@ function animate() {
   if (autoSpin) spinY += dt * 0.05;
   spinner.rotation.y = spinY;
 
-  surfMat.uniforms.uTime.value = t;
-  fogMat.uniforms.uTime.value  = t;
-  mistMat.uniforms.uTime.value = t;
+  surfMat.uniforms.uTime.value  = t;
+  fogMat.uniforms.uTime.value   = t;
+  mistMat.uniforms.uTime.value  = t;
+  shellMat.uniforms.uTime.value = t;
 
   if (starfield) { starfield.material.uniforms.uTime.value = t; starfield.rotation.y = t * 0.004; }
   if (sunRef) { const p = 1 + 0.035 * Math.sin(t * 1.1); sunRef.glow.scale.set(80 * p, 80 * p, 1); }
@@ -651,9 +658,10 @@ window.addEventListener('resize', () => {
   renderer.setSize(w, h);
   composer.setSize(w, h); bloomPass.setSize(w, h);
   const pr = renderer.getPixelRatio();
-  surfMat.uniforms.uPixelRatio.value = pr;
-  fogMat.uniforms.uPixelRatio.value  = pr;
-  mistMat.uniforms.uPixelRatio.value = pr;
+  surfMat.uniforms.uPixelRatio.value  = pr;
+  fogMat.uniforms.uPixelRatio.value   = pr;
+  mistMat.uniforms.uPixelRatio.value  = pr;
+  shellMat.uniforms.uPixelRatio.value = pr;
   if (starfield) starfield.material.uniforms.uPixelRatio.value = pr;
 });
 
