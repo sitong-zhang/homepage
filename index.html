@@ -292,21 +292,23 @@ const VERT = /* glsl */`
 
     vColor = aColor * tint;
 
-    gl_PointSize = size * uSizeScale * uPixelRatio * (12.5 / -mvPosition.z);
+    gl_PointSize = size * uSizeScale * uPixelRatio * (9.0 / -mvPosition.z);
     gl_Position  = projectionMatrix * mvPosition;
   }
 `;
 
 const FRAG = /* glsl */`
   varying vec3 vColor;
+  uniform float uTime;
 
   void main() {
-    // 圆形点 + 柔和边缘
+    // 圆形点 + 锐利边缘
     vec2  uv = gl_PointCoord - 0.5;
     float d2 = dot(uv, uv);
     if (d2 > 0.25) discard;
 
     float a = smoothstep(0.17, 0.10, d2);
+    a *= 0.88 + 0.12 * sin(uTime * 1.8);            // 科技感呼吸脉动
     gl_FragColor = vec4(vColor, a);
   }
 `;
@@ -427,18 +429,11 @@ async function buildEarth(landGeo) {
     posArr.push(x * rr, y * rr, z * rr);
 
     if (isLand) {
-      // 陆地：青蓝 → 浅冰蓝，带纬度变化
-      const t = Math.random();
-      const latFactor = Math.abs(lat) / 90; // 极地更白
-      col.setHSL(
-        0.540 + t * 0.040 - latFactor * 0.02,
-        0.65  - t * 0.30 - latFactor * 0.25,
-        0.52  + t * 0.14 + latFactor * 0.12
-      );
+      // 统一科技蓝(参考 globe.gl / 数据大屏点云地球): 单色 + 极微明度抖动
+      col.setHSL(0.554, 0.95, 0.60 + (Math.random() - 0.5) * 0.05);
     } else {
-      // 海洋：深蓝
-      const t = Math.random();
-      col.setHSL(0.610 + t * 0.030, 0.88, 0.10 + t * 0.08);
+      // 海洋粒子已剔除(oceanKeep = 0), 此分支不会执行
+      col.setHSL(0.554, 0.95, 0.12);
     }
 
     colArr.push(col.r, col.g, col.b);
@@ -446,8 +441,8 @@ async function buildEarth(landGeo) {
     // 粒子大小：陆地更大，海洋极小
     sizeArr.push(
       isLand
-        ? 0.74 + Math.random() * 0.44
-        : 0.34 + Math.random() * 0.20
+        ? 0.55 + Math.random() * 0.30
+        : 0.30 + Math.random() * 0.18
     );
   }
 
@@ -462,7 +457,7 @@ async function buildEarth(landGeo) {
     const r = R * (1 - Math.pow(Math.random(), 2.2) * 0.45);   // 偏向球面
     posArr.push(dx * r, dy * r, dz * r);
     const t = Math.random();
-    col.setHSL(0.585 + t * 0.030, 0.80, 0.06 + t * 0.07);
+    col.setHSL(0.554, 0.95, 0.28 + (t - 0.5) * 0.04);   // 同色相, 更暗
     colArr.push(col.r, col.g, col.b);
     sizeArr.push(0.40 + Math.random() * 0.30);
   }
@@ -474,7 +469,7 @@ async function buildEarth(landGeo) {
     const r = R * (0.35 + 0.64 * Math.cbrt(Math.random()));    // 体积均匀分布
     mPos.push(dx * r, dy * r, dz * r);
     const t = Math.random();
-    col.setHSL(0.560 + t * 0.050, 0.70, 0.045 + t * 0.055);    // 极暗微光, 加色后成雾
+    col.setHSL(0.554, 0.90, 0.040 + t * 0.050);   // 同色相极暗微光, 加色后成蓝雾
     mCol.push(col.r, col.g, col.b);
     mSiz.push(0.22 + Math.random() * 0.30);
   }
@@ -490,6 +485,7 @@ async function buildEarth(landGeo) {
       uPixelRatio : { value: renderer.getPixelRatio() },
       uSizeScale  : { value: 1.0 },
       uLightDir   : { value: SUN_DIR.clone() },
+      uTime       : { value: 0 },
     },
     vertexShader   : VERT,
     fragmentShader : FRAG,
@@ -513,6 +509,7 @@ async function buildEarth(landGeo) {
       uPixelRatio : { value: renderer.getPixelRatio() },
       uSizeScale  : { value: 1.0 },
       uLightDir   : { value: SUN_DIR.clone() },
+      uTime       : { value: 0 },
     },
     vertexShader   : VERT,
     fragmentShader : FRAG,
@@ -739,6 +736,8 @@ function animate() {
 
   if (earth) {
     earth.spinner.rotation.y = t * 0.05;
+    earth.mat.uniforms.uTime.value     = t;
+    earth.mistMat.uniforms.uTime.value = t;
   }
 
   if (starfield) {
