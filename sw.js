@@ -1,4 +1,4 @@
-const CACHE='zjt-earth-v2';
+const CACHE='zjt-earth-v3';
 const ASSETS=[
 './',
 './vendor/three/build/three.module.js',
@@ -26,6 +26,13 @@ self.addEventListener('activate',function(e){
 });
 self.addEventListener('fetch',function(e){
   if(e.request.method!=='GET')return;
+  if(e.request.mode==='navigate'){
+    e.respondWith(fetch(e.request).then(function(resp){
+      if(resp&&resp.ok){const cl=resp.clone();caches.open(CACHE).then(function(c){c.put(e.request,cl)})}
+      return resp;
+    }).catch(function(){return caches.match('./')}));
+    return;
+  }
   e.respondWith(caches.match(e.request,{ignoreSearch:true}).then(function(r){
     if(r)return r;
     return fetch(e.request).then(function(resp){
