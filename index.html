@@ -135,7 +135,7 @@ import { OutputPass }      from 'three/addons/postprocessing/OutputPass.js';
 const CFG = {
   radius        : 2.0,
   targetSamples : 200000,   // 球面目标采样数（最终粒子数 ≈ 陆地占比 × 此值）
-  oceanKeep     : 0.02,     // 海洋粒子保留率（极低，仅作轮廓暗示）
+  oceanKeep     : 0,        // 只要陆地: 海洋粒子全部剔除
 };
 
 // 太阳方向（世界空间，地球 → 太阳）
