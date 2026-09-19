@@ -597,5 +597,12 @@ window.addEventListener('resize', () => {
   if (starfield) starfield.material.uniforms.uPixelRatio.value = pr;
 });
 </script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('./sw.js').catch(function(){});
+  });
+}
+</script>
 </body>
 </html>
