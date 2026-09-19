@@ -58,6 +58,18 @@
     transition: width 0.18s ease;
   }
 
+  #bar.err i { background: #ff5b5b; }
+
+  #retry {
+    display: none;
+    padding: 9px 28px; border-radius: 9px;
+    border: 1px solid rgba(80, 150, 255, 0.5);
+    background: rgba(80, 150, 255, 0.10);
+    color: #7ec8ff; font-size: 12.5px; letter-spacing: 0.15em; text-indent: 0.15em;
+    cursor: pointer;
+  }
+  #retry:active { transform: scale(.96); }
+
   #hint {
     position: fixed;
     bottom: 22px; left: 50%;
@@ -91,6 +103,7 @@
   <div>加载高精度陆地数据</div>
   <div id="bar"><i></i></div>
   <div id="progress"></div>
+  <button id="retry" onclick="location.reload()">重新加载</button>
 </div>
 
 <div id="hint">拖动旋转 · 滚轮缩放 · 转到背面可见太阳</div>
@@ -180,36 +193,49 @@ const frame = () => new Promise(r => requestAnimationFrame(r));
 const LAND_BYTES = 3086715;   // land-10m.json 解压后字节数(分母)
 
 async function loadLandGeoJSON() {
-  const URLS = [
-    './vendor/land-10m.json',
-  ];
+  const URLS = ['./vendor/land-10m.json'];
 
   for (const url of URLS) {
-    try {
-      setProgress('下载陆地数据…'); setBar(0.01);
-      const res = await fetch(url);
-      if (!res.ok) continue;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        setProgress(attempt ? '网络停滞, 正在重试…' : '连接服务器…'); setBar(0.01);
 
-      // 流式读取: 每收到一块数据就刷新一次进度条(实时)
-      const reader = res.body.getReader();
-      const chunks = []; let received = 0;
-      for (;;){
-        const {done, value} = await reader.read();
-        if (done) break;
-        chunks.push(value); received += value.length;
-        const p = Math.min(1, received / LAND_BYTES);
-        setBar(0.01 + 0.69 * p);
-        setProgress('下载陆地数据… ' + Math.round(p * 100) + '%');
+        // 连接超时: 10 秒未响应即中止(绝不无限卡死)
+        const ctrl = new AbortController();
+        const kill = setTimeout(() => ctrl.abort(), 10000);
+        const res = await fetch(url, { signal: ctrl.signal });
+        clearTimeout(kill);
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+
+        // 流式读取: 实时进度 + 停滞检测(4 秒无新数据 → 中止)
+        const reader = res.body.getReader();
+        const chunks = []; let received = 0, lastTick = Date.now();
+        const stall = setInterval(() => {
+          if (Date.now() - lastTick > 4000) { try { reader.cancel(); } catch (e) {} }
+        }, 500);
+        try {
+          for (;;){
+            const {done, value} = await reader.read();
+            if (done) break;
+            chunks.push(value); received += value.length; lastTick = Date.now();
+            const p = Math.min(1, received / LAND_BYTES);
+            setBar(0.01 + 0.69 * p);
+            setProgress('下载陆地数据… ' + Math.round(p * 100) + '%');
+          }
+        } finally { clearInterval(stall); }
+
+        if (received < LAND_BYTES * 0.9) throw new Error('下载不完整: ' + received);
+
+        setProgress('解析陆地数据…'); setBar(0.72); await frame();
+        const topo = JSON.parse(await new Blob(chunks).text());
+        const land = topojson.feature(topo, topo.objects.land);
+        setBar(0.78);
+        console.log('[Earth] ✓ Natural Earth 1:10m 陆地数据已加载');
+        return land;
+      } catch (e) {
+        console.warn('[Earth] 源失败:', url, e);
+        if (attempt === 0) { setProgress('连接中断, 重试中…'); await new Promise(r => setTimeout(r, 800)); }
       }
-
-      setProgress('解析陆地数据…'); setBar(0.72); await frame();
-      const topo = JSON.parse(await new Blob(chunks).text());
-      const land = topojson.feature(topo, topo.objects.land);
-      setBar(0.78);
-      console.log('[Earth] ✓ Natural Earth 1:10m 陆地数据已加载');
-      return land;
-    } catch (e) {
-      console.warn('[Earth] 源失败:', url, e);
     }
   }
   return null;
@@ -597,7 +623,9 @@ let sunRef    = null;
 
   if (!landGeo) {
     console.error('[Earth] 无法加载陆地数据');
-    setProgress('陆地数据加载失败');
+    setProgress('加载失败, 请检查网络');
+    document.querySelector('#bar').classList.add('err');
+    document.getElementById('retry').style.display = 'inline-block';
     return;
   }
 
