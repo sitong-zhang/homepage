@@ -488,7 +488,7 @@ async function buildEarth(landGeo) {
     const t = Math.random();
     col.setHSL(0.554, 0.90, 0.040 + t * 0.050);   // 同色相极暗微光, 加色后成蓝雾
     mCol.push(col.r, col.g, col.b);
-    mSiz.push(0.22 + Math.random() * 0.30);
+    mSiz.push(0.90 + Math.random() * 0.90);
   }
 
   const geo = new THREE.BufferGeometry();
@@ -527,7 +527,7 @@ async function buildEarth(landGeo) {
       uSizeScale  : { value: 1.0 },
       uLightDir   : { value: SUN_DIR.clone() },
       uTime       : { value: 0 },
-      uOpacity    : { value: 0.16 },
+      uOpacity    : { value: 0.10 },
     },
     vertexShader   : VERT,
     fragmentShader : FOG_FRAG,
@@ -551,9 +551,10 @@ async function buildEarth(landGeo) {
       uSizeScale  : { value: 1.0 },
       uLightDir   : { value: SUN_DIR.clone() },
       uTime       : { value: 0 },
+      uOpacity    : { value: 0.09 },
     },
     vertexShader   : VERT,
-    fragmentShader : FRAG,
+    fragmentShader : FOG_FRAG,                     // 软雾着色器(不再是点)
     transparent    : true,
     depthWrite     : false,
     depthTest      : true,
