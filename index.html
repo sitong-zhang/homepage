@@ -2,115 +2,128 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>真实粒子地球 · Accurate Particle Earth</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
-    width: 100%; height: 100%;
-    overflow: hidden;
-    background: #000206;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+    width: 100%; height: 100%; overflow: hidden; background: #000206;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    color: #cfe2ff;
   }
   canvas { display: block; }
 
   #loading {
-    position: fixed; inset: 0; z-index: 100;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    gap: 22px;
+    position: fixed; inset: 0; z-index: 100; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 20px;
     background: radial-gradient(circle at 50% 50%, #041020 0%, #000206 70%);
-    color: #6ab7ff;
-    font-size: 13px;
-    letter-spacing: 0.35em;
-    text-indent: 0.35em;
-    transition: opacity 0.9s ease;
+    color: #6ab7ff; font-size: 13px; letter-spacing: .3em; text-indent: .3em;
+    transition: opacity .9s ease;
   }
   #loading.hide { opacity: 0; pointer-events: none; }
-
-  .loader-ring {
-    width: 46px; height: 46px;
-    border-radius: 50%;
-    border: 1.5px solid rgba(80, 150, 255, 0.15);
-    border-top-color: #4a9eff;
-    border-right-color: #4a9eff;
-    animation: spin 1s linear infinite;
-  }
+  .ring { width: 46px; height: 46px; border-radius: 50%; border: 1.5px solid rgba(80,150,255,.15);
+    border-top-color: #4a9eff; border-right-color: #4a9eff; animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
-
-  #progress {
-    font-size: 11px;
-    letter-spacing: 0.2em;
-    color: rgba(100, 160, 240, 0.5);
-    font-variant-numeric: tabular-nums;
-    min-height: 16px;
-  }
-
-  #bar {
-    width: 220px; height: 3px; border-radius: 3px;
-    background: rgba(80, 150, 255, 0.14);
-    overflow: hidden;
-  }
-  #bar i {
-    display: block; height: 100%; width: 0%;
-    background: linear-gradient(90deg, #2f7dff, #7ec8ff);
-    border-radius: 3px;
-    transition: width 0.18s ease;
-  }
-
+  #progress { font-size: 11px; letter-spacing: .16em; color: rgba(100,160,240,.55);
+    font-variant-numeric: tabular-nums; min-height: 16px; text-align: center; }
+  #bar { width: 220px; height: 3px; border-radius: 3px; background: rgba(80,150,255,.14); overflow: hidden; }
+  #bar i { display: block; height: 100%; width: 0%; border-radius: 3px;
+    background: linear-gradient(90deg, #2f7dff, #7ec8ff); transition: width .18s ease; }
   #bar.err i { background: #ff5b5b; }
-
-  #retry {
-    display: none;
-    padding: 9px 28px; border-radius: 9px;
-    border: 1px solid rgba(80, 150, 255, 0.5);
-    background: rgba(80, 150, 255, 0.10);
-    color: #7ec8ff; font-size: 12.5px; letter-spacing: 0.15em; text-indent: 0.15em;
-    cursor: pointer;
-  }
+  #note { font-size: 11.5px; letter-spacing: .02em; color: #fca5a5; text-indent: 0;
+    max-width: 460px; text-align: center; line-height: 1.85; display: none; }
+  #note.on { display: block; }
+  #retry { display: none; padding: 9px 28px; border-radius: 9px; cursor: pointer;
+    border: 1px solid rgba(80,150,255,.5); background: rgba(80,150,255,.10);
+    color: #7ec8ff; font-size: 12.5px; letter-spacing: .15em; text-indent: .15em; }
+  #retry.on { display: inline-block; }
   #retry:active { transform: scale(.96); }
 
-  #hint {
-    position: fixed;
-    bottom: 22px; left: 50%;
-    transform: translateX(-50%);
-    color: rgba(130, 180, 255, 0.32);
-    font-size: 11.5px;
-    letter-spacing: 0.18em;
-    pointer-events: none;
-    user-select: none;
-    white-space: nowrap;
-    transition: opacity 1.2s ease 2s;
-    opacity: 0;
-  }
-  #hint.show { opacity: 1; }
+  .panel { position: fixed; z-index: 20; border: 1px solid rgba(120,170,230,.16); border-radius: 13px;
+    background: rgba(8,14,26,.58); backdrop-filter: blur(12px); box-shadow: 0 12px 36px rgba(0,0,0,.45); }
+  #hud { left: 16px; bottom: 16px; padding: 11px 13px; min-width: 190px; font-size: 11.5px; color: #8ea0c4; }
+  #hud h4 { margin: 0 0 7px; font-size: 11.5px; color: #dce9ff; font-weight: 600; letter-spacing: .12em; }
+  #hud .k { display: flex; justify-content: space-between; gap: 16px; line-height: 1.85; }
+  #hud .k b { color: #e8eefc; font-weight: 500; font-variant-numeric: tabular-nums; }
 
-  #status {
-    position: fixed;
-    top: 16px; left: 16px;
-    color: rgba(120, 170, 230, 0.28);
-    font-size: 10.5px;
-    letter-spacing: 0.12em;
-    pointer-events: none;
-    user-select: none;
+  #ctl { right: 16px; top: 16px; width: 232px; padding: 13px 15px; }
+  #ctl h4 { margin: 0 0 11px; font-size: 11.5px; font-weight: 600; letter-spacing: .12em; color: #dce9ff; }
+  .row { margin-bottom: 11px; }
+  .row label { display: flex; justify-content: space-between; font-size: 11px; color: #8ea0c4; margin-bottom: 5px; }
+  .row label b { color: #e8eefc; font-weight: 500; font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; height: 3px; -webkit-appearance: none; appearance: none; border-radius: 99px;
+    background: rgba(255,255,255,.14); outline: none; cursor: pointer; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%;
+    background: #4a9eff; border: 2px solid #06101f; }
+  input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border: 2px solid #06101f; border-radius: 50%; background: #4a9eff; }
+  input[type=color] { width: 100%; height: 25px; padding: 0; border: 1px solid rgba(120,170,230,.2);
+    border-radius: 7px; background: transparent; cursor: pointer; }
+  .chk { display: flex; align-items: center; gap: 7px; font-size: 11px; color: #8ea0c4; cursor: pointer; }
+  .chk input { accent-color: #4a9eff; cursor: pointer; }
+
+  #fs { right: 16px; bottom: 16px; width: 44px; height: 44px; display: flex; align-items: center;
+    justify-content: center; cursor: pointer; color: #cfe2ff; transition: .2s; }
+  #fs:hover { background: rgba(80,150,255,.14); border-color: rgba(80,150,255,.45); }
+  #fs svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7;
+    stroke-linecap: round; stroke-linejoin: round; }
+
+  #hint { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 20;
+    color: rgba(130,180,255,.32); font-size: 11.5px; letter-spacing: .18em; pointer-events: none;
+    white-space: nowrap; transition: opacity 1.2s ease 2s; opacity: 0; }
+  #hint.show { opacity: 1; }
+  #hint.gone { opacity: 0 !important; }
+  @media (max-width: 720px) {
+    #ctl { width: 186px; top: 12px; right: 12px; padding: 11px 12px; }
+    #hud { left: 12px; bottom: 12px; min-width: 0; padding: 9px 11px; }
+    #hint { display: none; }
   }
 </style>
 </head>
 <body>
 
 <div id="loading">
-  <div class="loader-ring"></div>
+  <div class="ring"></div>
   <div>加载高精度陆地数据</div>
   <div id="bar"><i></i></div>
   <div id="progress"></div>
+  <div id="note"></div>
   <button id="retry" onclick="location.reload()">重新加载</button>
 </div>
 
-<div id="hint">拖动旋转 · 滚轮缩放 · 转到背面可见太阳</div>
-<div id="status"></div>
+<div id="hud" class="panel">
+  <h4>状态 · STATUS</h4>
+  <div class="k"><span>可见粒子</span><b id="s-pts">—</b></div>
+  <div class="k"><span>陆地采样</span><b id="s-land">—</b></div>
+  <div class="k"><span>数据源</span><b id="s-src">—</b></div>
+  <div class="k"><span>FPS</span><b id="s-fps">—</b></div>
+</div>
 
-<!-- ===== 全局脚本：TopoJSON 与 D3-Geo ===== -->
+<div id="ctl" class="panel">
+  <h4>粒子控制</h4>
+  <div class="row">
+    <label>基础颜色 <b id="v-color">#2f9bff</b></label>
+    <input id="c-color" type="color" value="#2f9bff" />
+  </div>
+  <div class="row">
+    <label>采样密度 <b id="v-den">200k</b></label>
+    <input id="c-den" type="range" min="60000" max="260000" step="20000" value="200000" />
+  </div>
+  <div class="row">
+    <label>粒子大小 <b id="v-size">1.00×</b></label>
+    <input id="c-size" type="range" min="0.6" max="2.0" step="0.05" value="1" />
+  </div>
+  <label class="chk"><input id="c-spin" type="checkbox" checked /> 自转（23.5° 地轴倾角）</label>
+</div>
+
+<div id="fs" class="panel" title="全屏">
+  <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+</div>
+
+<div id="hint">拖动旋转 · 滚轮缩放 · 转到背面可见太阳</div>
+
 <script src="./vendor/topojson-client.min.js"></script>
+<script src="./vendor/d3-array.min.js"></script>
+<script src="./vendor/d3-geo.min.js"></script>
 
 <script type="importmap">
 {
@@ -129,27 +142,37 @@ import { RenderPass }      from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass }      from 'three/addons/postprocessing/OutputPass.js';
 
-/* ============================================================
-   0. 全局配置
-   ============================================================ */
 const CFG = {
   radius        : 2.0,
-  targetSamples : 200000,   // 球面目标采样数（最终粒子数 ≈ 陆地占比 × 此值）
-  oceanKeep     : 0,        // 只要陆地: 海洋粒子全部剔除
+  targetSamples : 200000,
+  oceanKeep     : 0.02,
+  fogCount      : 60000,
+  mistCount     : 120000
 };
 
-// 太阳方向（世界空间，地球 → 太阳）
-const SUN_DIR   = new THREE.Vector3(0.60, 0.28, 0.75).normalize();
-const SUN_DIST  = 260;
+const SUN_DIR    = new THREE.Vector3(0.60, 0.28, 0.75).normalize();
+const SUN_DIST   = 260;
 const SUN_RADIUS = 8;
+const TILT       = THREE.MathUtils.degToRad(23.5);
 
-/* ============================================================
-   1. 渲染器 / 场景 / 相机
-   ============================================================ */
-const renderer = new THREE.WebGLRenderer({
-  antialias: true,
-  powerPreference: 'high-performance',
-});
+const $ = (id) => document.getElementById(id);
+const frame = () => new Promise(r => requestAnimationFrame(r));
+const setProgress = (t) => { $('progress').textContent = t; };
+const setBar = (p) => { document.querySelector('#bar i').style.width = (Math.max(0, Math.min(1, p)) * 100).toFixed(1) + '%'; };
+const setNote = (html) => { const n = $('note'); n.innerHTML = html; n.classList.add('on'); };
+
+if (location.protocol === 'file:') {
+  setNote('检测到 <b>file://</b> 协议：浏览器会拦截本地数据请求，页面将一直卡在加载。<br>' +
+          '请用本地服务器打开（<b>python3 -m http.server 8000</b>）或部署到静态托管。');
+}
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+} catch (e) {
+  setNote('WebGL 初始化失败：当前浏览器 / 设备不支持 WebGL。');
+  throw e;
+}
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -160,670 +183,492 @@ document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x000206);
 
-const camera = new THREE.PerspectiveCamera(
-  50, window.innerWidth / window.innerHeight, 0.1, 4000
-);
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 4000);
 camera.position.set(0, 1.6, 6.8);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.055;
-controls.rotateSpeed   = 0.65;
-controls.zoomSpeed     = 0.8;
-controls.minDistance   = 3.2;
-controls.maxDistance   = 24;
-controls.enablePan     = false;
+controls.rotateSpeed = 0.65;
+controls.zoomSpeed = 0.8;
+controls.minDistance = 3.2;
+controls.maxDistance = 24;
+controls.enablePan = false;
 controls.target.set(0, 0, 0);
 
-/* ============================================================
-   2. 高精度陆地数据 —— Natural Earth 1:10m
-      使用 TopoJSON → GeoJSON → d3.geoContains 精确判定
-   ============================================================ */
-const progressEl = document.getElementById('progress');
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  0.45, 0.55, 0.78
+);
+composer.addPass(bloomPass);
+composer.addPass(new OutputPass());
 
-function setProgress(text) {
-  progressEl.textContent = text;
-}
+const LAND_BYTES = 3086715;
+const SOURCES = [
+  './vendor/land-10m.json',
+  './vendor/land-110m.json',
+  'https://cdn.jsdelivr.net/npm/world-atlas@2/land-10m.json',
+  'https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json'
+];
 
-function setBar(p) {
-  document.querySelector('#bar i').style.width =
-    Math.max(0, Math.min(100, p * 100)).toFixed(1) + '%';
+async function fetchLand(url) {
+  const ctrl = new AbortController();
+  const kill = setTimeout(() => ctrl.abort(), 10000);
+  let res;
+  try {
+    res = await fetch(url, { signal: ctrl.signal });
+  } finally { clearTimeout(kill); }
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+
+  const reader = res.body.getReader();
+  const chunks = []; let received = 0, lastTick = Date.now();
+  const stall = setInterval(() => {
+    if (Date.now() - lastTick > 4000) { try { reader.cancel(); } catch (e) {} }
+  }, 500);
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value); received += value.length; lastTick = Date.now();
+      const p = Math.min(1, received / LAND_BYTES);
+      setBar(0.02 + 0.68 * p);
+      setProgress('下载陆地数据… ' + Math.round(p * 100) + '%');
+    }
+  } finally { clearInterval(stall); }
+  if (received < 200000) throw new Error('下载不完整: ' + received);
+  return JSON.parse(await new Blob(chunks).text());
 }
-const frame = () => new Promise(r => requestAnimationFrame(r));
-const LAND_BYTES = 3086715;   // land-10m.json 解压后字节数(分母)
 
 async function loadLandGeoJSON() {
-  const URLS = ['./vendor/land-10m.json'];
-
-  for (const url of URLS) {
+  for (const url of SOURCES) {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        setProgress(attempt ? '网络停滞, 正在重试…' : '连接服务器…'); setBar(0.01);
-
-        // 连接超时: 10 秒未响应即中止(绝不无限卡死)
-        const ctrl = new AbortController();
-        const kill = setTimeout(() => ctrl.abort(), 10000);
-        const res = await fetch(url, { signal: ctrl.signal });
-        clearTimeout(kill);
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-
-        // 流式读取: 实时进度 + 停滞检测(4 秒无新数据 → 中止)
-        const reader = res.body.getReader();
-        const chunks = []; let received = 0, lastTick = Date.now();
-        const stall = setInterval(() => {
-          if (Date.now() - lastTick > 4000) { try { reader.cancel(); } catch (e) {} }
-        }, 500);
-        try {
-          for (;;){
-            const {done, value} = await reader.read();
-            if (done) break;
-            chunks.push(value); received += value.length; lastTick = Date.now();
-            const p = Math.min(1, received / LAND_BYTES);
-            setBar(0.01 + 0.69 * p);
-            setProgress('下载陆地数据… ' + Math.round(p * 100) + '%');
-          }
-        } finally { clearInterval(stall); }
-
-        if (received < LAND_BYTES * 0.9) throw new Error('下载不完整: ' + received);
-
+        setProgress(attempt ? '网络停滞，正在重试…' : '连接数据源…'); setBar(0.01);
+        const topo = await fetchLand(url);
         setProgress('解析陆地数据…'); setBar(0.72); await frame();
-        const topo = JSON.parse(await new Blob(chunks).text());
-        const land = topojson.feature(topo, topo.objects.land);
+        const land = topojson.feature(topo, topo.objects.land || Object.values(topo.objects)[0]);
         setBar(0.78);
-        console.log('[Earth] ✓ Natural Earth 1:10m 陆地数据已加载');
-        return land;
+        console.log('[Earth] 陆地数据已加载:', url);
+        return { land, url };
       } catch (e) {
         console.warn('[Earth] 源失败:', url, e);
-        if (attempt === 0) { setProgress('连接中断, 重试中…'); await new Promise(r => setTimeout(r, 800)); }
+        if (attempt === 0) { setProgress('连接中断，重试中…'); await new Promise(r => setTimeout(r, 800)); }
       }
     }
   }
   return null;
 }
 
-/* ============================================================
-   3. 几何工具
-   ============================================================ */
-// 球面均匀采样（Fibonacci）
-function fibSphere(i, n) {
-  const y     = 1 - (i / (n - 1)) * 2;
-  const r     = Math.sqrt(Math.max(0, 1 - y * y));
-  const theta = i * Math.PI * (3 - Math.sqrt(5));
-  return [Math.cos(theta) * r, y, Math.sin(theta) * r];
-}
-
-// 笛卡尔 → 经纬度（度）
-function toLonLat(x, y, z) {
-  const len = Math.sqrt(x * x + y * y + z * z) || 1;
-  const nx = x / len, ny = y / len, nz = z / len;
-  const lon = Math.atan2(nz, nx) * 180 / Math.PI;          // -180 .. 180
-  const lat = Math.asin(Math.max(-1, Math.min(1, ny))) * 180 / Math.PI; // -90 .. 90
-  return [lon, lat];
-}
-
-/* ============================================================
-   4. 着色器
-   ------------------------------------------------------------
-   光照固定在世界空间指向太阳；
-   粒子为圆形点，带柔和发光。
-   ============================================================ */
-const VERT = /* glsl */`
-  attribute float size;
-  attribute vec3  aColor;
-
-  uniform float uPixelRatio;
-  uniform float uSizeScale;
-  uniform vec3  uLightDir;      // 世界空间：星球 → 太阳
-
-  varying vec3  vColor;
-
-  void main() {
-    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-
-    // 世界空间法线（球面方向即法线）
-    vec3 n = normalize(mat3(modelMatrix) * normalize(position));
-
-    // 太阳漫反射（柔和明暗交界）
-    float d   = dot(n, uLightDir);
-    float sun = smoothstep(-0.08, 0.55, d);
-
-    // 受光面：暖白；背光面：极暗冷蓝
-    vec3 tint = mix(vec3(0.08, 0.11, 0.18), vec3(1.0, 0.97, 0.92), sun);
-
-    vColor = aColor * tint;
-
-    gl_PointSize = size * uSizeScale * uPixelRatio * (9.0 / -mvPosition.z);
-    gl_Position  = projectionMatrix * mvPosition;
-  }
-`;
-
-const FRAG = /* glsl */`
-  varying vec3 vColor;
-  uniform float uTime;
-
-  void main() {
-    // 圆形点 + 锐利边缘
-    vec2  uv = gl_PointCoord - 0.5;
-    float d2 = dot(uv, uv);
-    if (d2 > 0.25) discard;
-
-    float a = smoothstep(0.17, 0.10, d2);
-    a *= 0.88 + 0.12 * sin(uTime * 1.8);            // 科技感呼吸脉动
-    gl_FragColor = vec4(vColor, a);
-  }
-`;
-
-const FOG_FRAG = /* glsl */`
-  varying vec3 vColor;
-  uniform float uTime;
-  uniform float uOpacity;
-
-  void main() {
-    vec2  uv = gl_PointCoord - 0.5;
-    float d2 = dot(uv, uv);
-    if (d2 > 0.25) discard;
-
-    float a = smoothstep(0.25, 0.04, d2) * uOpacity;  // 大软边, 融合成雾
-    a *= 0.90 + 0.10 * sin(uTime * 1.8);
-    gl_FragColor = vec4(vColor, a);
-  }
-`;
-
-/* ============================================================
-   4.5 陆地查找表 —— 10m 边界一次性光栅化
-   把 d3.geoContains 的逐点球面几何计算(分钟级)
-   换成 canvas 光栅化 + O(1) 查表(亚秒级), 采样配置不变
-   ============================================================ */
-function rasterizeLand(landGeo){
-  const W = 2048, H = 1024;                       // 0.176°/px
+function rasterizeLand(landGeo) {
+  const W = 2048, H = 1024;
   const cv = document.createElement('canvas');
   cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d', { willReadFrequently: true });
   ctx.fillStyle = '#ff0000';
 
-  const geoms = landGeo.type === 'FeatureCollection'
-    ? landGeo.features.map(f => f.geometry)
-    : (landGeo.type === 'Feature' ? [landGeo.geometry] : [landGeo]);
+  const geoms = landGeo.type === 'FeatureCollection' ? landGeo.features.map(f => f.geometry)
+              : landGeo.type === 'Feature' ? [landGeo.geometry]
+              : [landGeo];
 
-  for (const g of geoms){
+  for (const g of geoms) {
     const polys = g.type === 'Polygon' ? [g.coordinates]
-                : (g.type === 'MultiPolygon' ? g.coordinates : []);
-    for (const poly of polys){
-      for (const ring of poly){
-        // 反经线拆分: 经度跳变>180° 的边会在展开图上拉出横贯直线(视觉上的"赤道线")
-        // 在跳变处把环切成两条子路径, 并在对侧边缘补插值点, 保持形状闭合
+                : g.type === 'MultiPolygon' ? g.coordinates : [];
+    for (const poly of polys) {
+      for (const ring of poly) {
         const segs = []; let cur = [];
-        for (let k = 0; k < ring.length; k++){
-          if (k > 0){
-            const q = ring[k-1], p = ring[k];
+        for (let k = 0; k < ring.length; k++) {
+          if (k > 0) {
+            const q = ring[k - 1], p = ring[k];
             const dl = p[0] - q[0];
-            if (Math.abs(dl) > 180){
-              const t  = (180 - Math.abs(q[0])) / Math.abs(dl);
-              const li = q[1] + (p[1] - q[1]) * t;      // 边缘插值纬度
+            if (Math.abs(dl) > 180) {
+              const t = (180 - Math.abs(q[0])) / Math.abs(dl);
+              const li = q[1] + (p[1] - q[1]) * t;
               const eg = q[0] > 0 ? 180 : -180;
-              cur.push([eg, li]);
-              segs.push(cur);
-              cur = [[-eg, li]];
+              cur.push([eg, li]); segs.push(cur); cur = [[-eg, li]];
             }
           }
           cur.push(ring[k]);
         }
         if (cur.length) segs.push(cur);
 
-        for (const seg of segs){
+        for (const seg of segs) {
           if (seg.length < 3) continue;
           ctx.beginPath();
-          for (let k = 0; k < seg.length; k++){
+          for (let k = 0; k < seg.length; k++) {
             const x = (seg[k][0] + 180) / 360 * W;
-            const y = (90  - seg[k][1]) / 180 * H;
+            const y = (90 - seg[k][1]) / 180 * H;
             k === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
           }
           ctx.closePath();
-          ctx.fill('evenodd');                          // evenodd 正确处理内湖(里海等)
+          ctx.fill('evenodd');
         }
       }
     }
   }
-  const data = ctx.getImageData(0, 0, W, H).data; // alpha>40 即陆地
-  return { data, W, H };
+  return { data: ctx.getImageData(0, 0, W, H).data, W, H };
 }
 
-function isLandAt(t, lon, lat){
+function isLandAt(t, lon, lat) {
   let x = Math.floor((lon + 180) / 360 * t.W); if (x < 0) x = 0; if (x >= t.W) x = t.W - 1;
-  let y = Math.floor((90  - lat) / 180 * t.H); if (y < 0) y = 0; if (y >= t.H) y = t.H - 1;
+  let y = Math.floor((90 - lat) / 180 * t.H);  if (y < 0) y = 0; if (y >= t.H) y = t.H - 1;
   return t.data[(y * t.W + x) * 4 + 3] > 40;
 }
 
-/* ============================================================
-   5. 构建粒子地球
-   ============================================================ */
-async function buildEarth(landGeo) {
-  const N = CFG.targetSamples;
-  const R = CFG.radius;
+function fibSphere(i, n) {
+  const y = 1 - (i / (n - 1)) * 2;
+  const r = Math.sqrt(Math.max(0, 1 - y * y));
+  const theta = i * Math.PI * (3 - Math.sqrt(5));
+  return [Math.cos(theta) * r, y, Math.sin(theta) * r];
+}
+function toLonLat(x, y, z) {
+  const len = Math.sqrt(x * x + y * y + z * z) || 1;
+  const lon = Math.atan2(z / len, x / len) * 180 / Math.PI;
+  const lat = Math.asin(Math.max(-1, Math.min(1, y / len))) * 180 / Math.PI;
+  return [lon, lat];
+}
 
-  const posArr  = [];
-  const colArr  = [];
-  const sizeArr = [];
+let baseHSL = { h: 0, s: 0, l: 0 };
+new THREE.Color('#2f9bff').getHSL(baseHSL);
+const _c = new THREE.Color();
 
-  const col = new THREE.Color();
+function landColor(lat) {
+  const t = Math.min(1, Math.abs(lat) / 90);
+  return _c.setHSL((baseHSL.h + t * 0.025) % 1, 0.95 - t * 0.48, 0.54 + t * 0.34);
+}
+function oceanColor() {
+  return _c.setHSL((baseHSL.h + 0.03) % 1, 0.90, 0.24);
+}
 
-  // 陆地查找表(光栅化一次, 之后 20 万采样全部 O(1) 查表)
-  const landTable = rasterizeLand(landGeo);
-
-  let checked = 0;
-  let landCount = 0;
-  let oceanCount = 0;
-
-  for (let i = 0; i < N; i++) {
-    const [x, y, z] = fibSphere(i, N);
-
-    // 每 2 万点让出一次主线程: 进度条实时平滑刷新
-    if (i % 20000 === 0) {
-      setProgress(`采样陆地粒子… ${Math.round(i / N * 100)}%`);
-      setBar(0.9 + 0.1 * (i / N));
-      await frame();
-    }
-
-    // 经纬度判定
-    const [lon, lat] = toLonLat(x, y, z);
-    const isLand = isLandAt(landTable, lon, lat);
-
-    checked++;
-
-    if (isLand) {
-      landCount++;
-    } else {
-      // 海洋：极低概率保留，仅作轮廓暗示
-      if (Math.random() > CFG.oceanKeep) continue;
-      oceanCount++;
-    }
-
-    // 半径微抖动，形成薄壳
-    const jitter = 1 + (Math.random() - 0.5) * 0.008;
-    const rr     = R * jitter * (isLand ? 1.006 : 1.0);
-
-    posArr.push(x * rr, y * rr, z * rr);
-
-    if (isLand) {
-      // 统一科技蓝(参考 globe.gl / 数据大屏点云地球): 单色 + 极微明度抖动
-      col.setHSL(0.554, 0.95, 0.60 + (Math.random() - 0.5) * 0.05);
-    } else {
-      // 海洋粒子已剔除(oceanKeep = 0), 此分支不会执行
-      col.setHSL(0.554, 0.95, 0.12);
-    }
-
-    colArr.push(col.r, col.g, col.b);
-
-    // 粒子大小：陆地更大，海洋极小
-    sizeArr.push(
-      isLand
-        ? 0.55 + Math.random() * 0.30
-        : 0.30 + Math.random() * 0.18
-    );
+const VERT = `
+  attribute float size;
+  attribute vec3  aColor;
+  uniform float uPixelRatio, uSizeScale;
+  uniform vec3  uLightDir;
+  varying vec3  vColor;
+  void main() {
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    vec3 n = normalize(mat3(modelMatrix) * normalize(position));
+    float sun = smoothstep(-0.08, 0.55, dot(n, uLightDir));
+    vec3 tint = mix(vec3(0.08, 0.11, 0.18), vec3(1.0, 0.97, 0.92), sun);
+    vColor = aColor * tint;
+    gl_PointSize = size * uSizeScale * uPixelRatio * (9.0 / -mvPosition.z);
+    gl_Position  = projectionMatrix * mvPosition;
   }
+`;
+const FRAG = `
+  varying vec3 vColor;
+  uniform float uTime;
+  void main() {
+    vec2 uv = gl_PointCoord - 0.5;
+    float d2 = dot(uv, uv);
+    if (d2 > 0.25) discard;
+    float a = smoothstep(0.17, 0.10, d2);
+    a *= 0.92 + 0.08 * sin(uTime * 1.8);
+    gl_FragColor = vec4(vColor, a);
+  }
+`;
+const FOG_FRAG = `
+  varying vec3 vColor;
+  uniform float uTime, uOpacity;
+  void main() {
+    vec2 uv = gl_PointCoord - 0.5;
+    float d2 = dot(uv, uv);
+    if (d2 > 0.25) discard;
+    float a = smoothstep(0.25, 0.04, d2) * uOpacity;
+    a *= 0.90 + 0.10 * sin(uTime * 1.8);
+    gl_FragColor = vec4(vColor, a);
+  }
+`;
 
-  // ===== 内部: 纯雾体积(6万软雾盖体 + 12万加色辉光), 内部没有任何"点" =====
-  const FOG = 60000, MIST = 120000;
-  const fPos = [], fCol = [], fSiz = [];
-  const mPos = [], mCol = [], mSiz = [];
-  for (let j = 0; j < FOG; j++){
-    const u  = Math.random() * 2 - 1;
-    const th = Math.random() * Math.PI * 2;
-    const rr0 = Math.sqrt(Math.max(0, 1 - u * u));
-    const dx = rr0 * Math.cos(th), dy = u, dz = rr0 * Math.sin(th);
-    const r = R * (0.30 + 0.685 * Math.cbrt(Math.random()));   // 体积均匀, 全填充
+let landTable = null, landGeoRef = null;
+let earthPoints = null, fogPoints = null, mistPoints = null;
+let building = false;
+
+const spinner = new THREE.Group();
+const tilt    = new THREE.Group();
+tilt.rotation.z = TILT;
+tilt.add(spinner);
+scene.add(tilt);
+
+const surfMat = new THREE.ShaderMaterial({
+  uniforms: { uPixelRatio:{value:renderer.getPixelRatio()}, uSizeScale:{value:1}, uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()} },
+  vertexShader: VERT, fragmentShader: FRAG,
+  transparent: true, depthWrite: true, depthTest: true, blending: THREE.NormalBlending
+});
+const fogMat = new THREE.ShaderMaterial({
+  uniforms: { uPixelRatio:{value:renderer.getPixelRatio()}, uSizeScale:{value:1}, uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()}, uOpacity:{value:0.10} },
+  vertexShader: VERT, fragmentShader: FOG_FRAG,
+  transparent: true, depthWrite: false, depthTest: true, blending: THREE.NormalBlending
+});
+const mistMat = new THREE.ShaderMaterial({
+  uniforms: { uPixelRatio:{value:renderer.getPixelRatio()}, uSizeScale:{value:1}, uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()}, uOpacity:{value:0.09} },
+  vertexShader: VERT, fragmentShader: FOG_FRAG,
+  transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending
+});
+
+function makePoints(pos, col, siz, mat) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('aColor',   new THREE.Float32BufferAttribute(col, 3));
+  g.setAttribute('size',     new THREE.Float32BufferAttribute(siz, 1));
+  g.computeBoundingSphere();
+  return new THREE.Points(g, mat);
+}
+
+function buildInterior() {
+  const R = CFG.radius, col = new THREE.Color();
+  const fPos = [], fCol = [], fSiz = [], mPos = [], mCol = [], mSiz = [];
+  const rnd = () => {
+    const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2;
+    const rr = Math.sqrt(Math.max(0, 1 - u * u));
+    return [rr * Math.cos(th), u, rr * Math.sin(th)];
+  };
+  for (let j = 0; j < CFG.fogCount; j++) {
+    const [dx, dy, dz] = rnd();
+    const r = R * (0.30 + 0.685 * Math.cbrt(Math.random()));
     fPos.push(dx * r, dy * r, dz * r);
-    const t = Math.random();
-    col.setHSL(0.554, 0.85, 0.10 + t * 0.06);                  // 深科技蓝雾体
+    col.setHSL(baseHSL.h, 0.85, 0.10 + Math.random() * 0.06);
     fCol.push(col.r, col.g, col.b);
-    fSiz.push(1.10 + Math.random() * 1.10);                    // 大粒子, 相互融合成雾
+    fSiz.push(1.10 + Math.random() * 1.10);
   }
-  for (let j = 0; j < MIST; j++){
-    const u  = Math.random() * 2 - 1;
-    const th = Math.random() * Math.PI * 2;
-    const rr0 = Math.sqrt(Math.max(0, 1 - u * u));
-    const dx = rr0 * Math.cos(th), dy = u, dz = rr0 * Math.sin(th);
-    const r = R * (0.35 + 0.64 * Math.cbrt(Math.random()));    // 体积均匀分布
+  for (let j = 0; j < CFG.mistCount; j++) {
+    const [dx, dy, dz] = rnd();
+    const r = R * (0.35 + 0.64 * Math.cbrt(Math.random()));
     mPos.push(dx * r, dy * r, dz * r);
-    const t = Math.random();
-    col.setHSL(0.554, 0.90, 0.040 + t * 0.050);   // 同色相极暗微光, 加色后成蓝雾
+    col.setHSL(baseHSL.h, 0.90, 0.040 + Math.random() * 0.050);
     mCol.push(col.r, col.g, col.b);
     mSiz.push(0.90 + Math.random() * 0.90);
   }
-
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(posArr, 3));
-  geo.setAttribute('aColor',   new THREE.Float32BufferAttribute(colArr, 3));
-  geo.setAttribute('size',     new THREE.Float32BufferAttribute(sizeArr, 1));
-  geo.computeBoundingSphere();
-
-  const mat = new THREE.ShaderMaterial({
-    uniforms: {
-      uPixelRatio : { value: renderer.getPixelRatio() },
-      uSizeScale  : { value: 1.0 },
-      uLightDir   : { value: SUN_DIR.clone() },
-      uTime       : { value: 0 },
-    },
-    vertexShader   : VERT,
-    fragmentShader : FRAG,
-    transparent    : true,
-    depthWrite     : true,
-    depthTest      : true,
-    blending       : THREE.NormalBlending,
-  });
-
-  const points = new THREE.Points(geo, mat);
-
-  // 体雾: 大而淡的软粒子(Normal 混合, 低透明度) → 融成雾体把内部"盖住"
-  const fgeo = new THREE.BufferGeometry();
-  fgeo.setAttribute('position', new THREE.Float32BufferAttribute(fPos, 3));
-  fgeo.setAttribute('aColor',   new THREE.Float32BufferAttribute(fCol, 3));
-  fgeo.setAttribute('size',     new THREE.Float32BufferAttribute(fSiz, 1));
-  fgeo.computeBoundingSphere();
-
-  const fogMat = new THREE.ShaderMaterial({
-    uniforms: {
-      uPixelRatio : { value: renderer.getPixelRatio() },
-      uSizeScale  : { value: 1.0 },
-      uLightDir   : { value: SUN_DIR.clone() },
-      uTime       : { value: 0 },
-      uOpacity    : { value: 0.10 },
-    },
-    vertexShader   : VERT,
-    fragmentShader : FOG_FRAG,
-    transparent    : true,
-    depthWrite     : false,
-    depthTest      : true,
-    blending       : THREE.NormalBlending,
-  });
-  const fog = new THREE.Points(fgeo, fogMat);
-
-  // 辉光雾: 加色混合 → 雾的光感
-  const mgeo = new THREE.BufferGeometry();
-  mgeo.setAttribute('position', new THREE.Float32BufferAttribute(mPos, 3));
-  mgeo.setAttribute('aColor',   new THREE.Float32BufferAttribute(mCol, 3));
-  mgeo.setAttribute('size',     new THREE.Float32BufferAttribute(mSiz, 1));
-  mgeo.computeBoundingSphere();
-
-  const mistMat = new THREE.ShaderMaterial({
-    uniforms: {
-      uPixelRatio : { value: renderer.getPixelRatio() },
-      uSizeScale  : { value: 1.0 },
-      uLightDir   : { value: SUN_DIR.clone() },
-      uTime       : { value: 0 },
-      uOpacity    : { value: 0.09 },
-    },
-    vertexShader   : VERT,
-    fragmentShader : FOG_FRAG,                     // 软雾着色器(不再是点)
-    transparent    : true,
-    depthWrite     : false,
-    depthTest      : true,
-    blending       : THREE.AdditiveBlending,
-  });
-  const mist = new THREE.Points(mgeo, mistMat);
-
-  // 地轴倾角 23.5° + 自转组
-  const spinner = new THREE.Group();
-  spinner.add(points);
-  spinner.add(fog);
-  spinner.add(mist);
-  const group = new THREE.Group();
-  group.rotation.z = THREE.MathUtils.degToRad(23.5);
-  group.add(spinner);
-  scene.add(group);
-
-  console.log(
-    `[Earth] 采样 ${checked} 点 · 陆地 ${landCount} · 海洋 ${oceanCount} · ` +
-    `最终粒子 ${posArr.length / 3}`
-  );
-
-  return { points, fog, mist, mat, fogMat, mistMat, group, spinner, count: posArr.length / 3, landCount };
+  if (fogPoints)  { spinner.remove(fogPoints);  fogPoints.geometry.dispose(); }
+  if (mistPoints) { spinner.remove(mistPoints); mistPoints.geometry.dispose(); }
+  fogPoints  = makePoints(fPos, fCol, fSiz, fogMat);
+  mistPoints = makePoints(mPos, mCol, mSiz, mistMat);
+  spinner.add(fogPoints); spinner.add(mistPoints);
 }
 
-/* ============================================================
-   6. 远处太阳
-   ============================================================ */
+async function buildSurface(N) {
+  if (building || !landTable) return 0;
+  building = true;
+  const R = CFG.radius;
+  const pos = [], col = [], siz = [];
+  let landCount = 0, oceanCount = 0;
+
+  for (let i = 0; i < N; i++) {
+    if (i % 20000 === 0) {
+      setProgress('采样陆地粒子… ' + Math.round(i / N * 100) + '%');
+      setBar(0.9 + 0.1 * (i / N));
+      await frame();
+    }
+    const [x, y, z] = fibSphere(i, N);
+    const [lon, lat] = toLonLat(x, y, z);
+    const isLand = isLandAt(landTable, lon, lat);
+
+    if (!isLand && Math.random() > CFG.oceanKeep) continue;
+    isLand ? landCount++ : oceanCount++;
+
+    const rr = R * (1 + (Math.random() - 0.5) * 0.008) * (isLand ? 1.006 : 1.0);
+    pos.push(x * rr, y * rr, z * rr);
+
+    const c = isLand ? landColor(lat) : oceanColor();
+    col.push(c.r, c.g, c.b);
+    siz.push(isLand ? 0.55 + Math.random() * 0.30 : 0.28 + Math.random() * 0.14);
+  }
+
+  if (earthPoints) { spinner.remove(earthPoints); earthPoints.geometry.dispose(); }
+  earthPoints = makePoints(pos, col, siz, surfMat);
+  spinner.add(earthPoints);
+
+  $('s-pts').textContent  = (pos.length / 3).toLocaleString();
+  $('s-land').textContent = landCount.toLocaleString();
+  console.log('[Earth] 采样 ' + N + ' 点 · 陆地 ' + landCount + ' · 海洋 ' + oceanCount + ' · 最终 ' + pos.length / 3 + ' 粒子');
+  building = false;
+  return pos.length / 3;
+}
+
 function makeGlowTexture() {
-  const S = 256;
-  const cv = document.createElement('canvas');
+  const S = 256, cv = document.createElement('canvas');
   cv.width = cv.height = S;
   const ctx = cv.getContext('2d');
-
   const g = ctx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
-  g.addColorStop(0.00, 'rgba(255, 250, 235, 1.00)');
-  g.addColorStop(0.14, 'rgba(255, 225, 170, 0.72)');
-  g.addColorStop(0.34, 'rgba(255, 180,  95, 0.24)');
-  g.addColorStop(0.62, 'rgba(255, 140,  50, 0.07)');
-  g.addColorStop(1.00, 'rgba(255, 110,  20, 0.00)');
-
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, S, S);
-
+  g.addColorStop(0.00, 'rgba(255,250,235,1.00)');
+  g.addColorStop(0.14, 'rgba(255,225,170,0.72)');
+  g.addColorStop(0.34, 'rgba(255,180, 95,0.24)');
+  g.addColorStop(0.62, 'rgba(255,140, 50,0.07)');
+  g.addColorStop(1.00, 'rgba(255,110, 20,0.00)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
 }
 
+let sunRef = null;
 function buildSun() {
-  const sunPos = SUN_DIR.clone().multiplyScalar(SUN_DIST);
-
-  // 核心
-  const coreGeo = new THREE.SphereGeometry(SUN_RADIUS, 32, 32);
-  const coreMat = new THREE.MeshBasicMaterial({ color: 0xfff4dd });
-  const core = new THREE.Mesh(coreGeo, coreMat);
-  core.position.copy(sunPos);
-  scene.add(core);
-
-  // 光晕
-  const glowMat = new THREE.SpriteMaterial({
-    map        : makeGlowTexture(),
-    color      : 0xffd9a0,
-    blending   : THREE.AdditiveBlending,
-    transparent: true,
-    depthWrite : false,
-    depthTest  : true,
-  });
-  const glow = new THREE.Sprite(glowMat);
-  glow.position.copy(sunPos);
-  glow.scale.set(80, 80, 1);
-  scene.add(glow);
-
-  return { core, glow, pos: sunPos };
+  const p = SUN_DIR.clone().multiplyScalar(SUN_DIST);
+  const core = new THREE.Mesh(new THREE.SphereGeometry(SUN_RADIUS, 32, 32),
+                              new THREE.MeshBasicMaterial({ color: 0xfff4dd }));
+  core.position.copy(p); scene.add(core);
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: makeGlowTexture(), color: 0xffd9a0,
+    blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, depthTest: true
+  }));
+  glow.position.copy(p); glow.scale.set(80, 80, 1); scene.add(glow);
+  sunRef = { core, glow };
 }
 
-/* ============================================================
-   7. 深空背景星尘
-   ============================================================ */
+let starfield = null;
 function buildStarfield() {
   const COUNT = 4500;
-  const pos = new Float32Array(COUNT * 3);
-  const col = new Float32Array(COUNT * 3);
-  const siz = new Float32Array(COUNT);
-  const pha = new Float32Array(COUNT);
-
+  const pos = new Float32Array(COUNT * 3), col = new Float32Array(COUNT * 3);
+  const siz = new Float32Array(COUNT), pha = new Float32Array(COUNT);
   const c = new THREE.Color();
-
   for (let i = 0; i < COUNT; i++) {
-    const r     = 60 + Math.pow(Math.random(), 0.6) * 700;
+    const r = 60 + Math.pow(Math.random(), 0.6) * 700;
     const theta = Math.random() * Math.PI * 2;
-    const phi   = Math.acos(2 * Math.random() - 1);
-
-    pos[i * 3    ] = r * Math.sin(phi) * Math.cos(theta);
+    const phi = Math.acos(2 * Math.random() - 1);
+    pos[i * 3]     = r * Math.sin(phi) * Math.cos(theta);
     pos[i * 3 + 1] = r * Math.cos(phi);
     pos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
-
     c.setHSL(Math.random(), 0.60, 0.14 + Math.random() * 0.20);
-    col[i * 3    ] = c.r;
-    col[i * 3 + 1] = c.g;
-    col[i * 3 + 2] = c.b;
-
+    col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
     siz[i] = 0.7 + Math.random() * 2.0;
     pha[i] = Math.random() * Math.PI * 2;
   }
-
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  geo.setAttribute('aColor',   new THREE.BufferAttribute(col, 3));
-  geo.setAttribute('size',     new THREE.BufferAttribute(siz, 1));
-  geo.setAttribute('phase',    new THREE.BufferAttribute(pha, 1));
-
-  const mat = new THREE.ShaderMaterial({
-    uniforms: {
-      uTime       : { value: 0 },
-      uPixelRatio : { value: renderer.getPixelRatio() },
-    },
-    vertexShader: /* glsl */`
-      attribute float size;
-      attribute float phase;
-      attribute vec3  aColor;
-
-      uniform float uTime;
-      uniform float uPixelRatio;
-
-      varying vec3  vColor;
-      varying float vAlpha;
-
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('aColor',   new THREE.BufferAttribute(col, 3));
+  g.setAttribute('size',     new THREE.BufferAttribute(siz, 1));
+  g.setAttribute('phase',    new THREE.BufferAttribute(pha, 1));
+  const m = new THREE.ShaderMaterial({
+    uniforms: { uTime: { value: 0 }, uPixelRatio: { value: renderer.getPixelRatio() } },
+    vertexShader: `
+      attribute float size; attribute float phase; attribute vec3 aColor;
+      uniform float uTime, uPixelRatio;
+      varying vec3 vColor; varying float vAlpha;
       void main() {
         vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
         vColor = aColor;
         vAlpha = 0.35 + 0.55 * (0.5 + 0.5 * sin(uTime * 0.85 + phase));
         gl_PointSize = size * uPixelRatio * (18.0 / -mvPosition.z);
         gl_Position  = projectionMatrix * mvPosition;
-      }
-    `,
-    fragmentShader: /* glsl */`
-      varying vec3  vColor;
-      varying float vAlpha;
+      }`,
+    fragmentShader: `
+      varying vec3 vColor; varying float vAlpha;
       void main() {
-        vec2  uv = gl_PointCoord - 0.5;
-        float d2 = dot(uv, uv);
+        vec2 uv = gl_PointCoord - 0.5; float d2 = dot(uv, uv);
         if (d2 > 0.25) discard;
-        float a = smoothstep(0.25, 0.0, d2);
-        gl_FragColor = vec4(vColor, a * vAlpha);
-      }
-    `,
-    transparent : true,
-    depthWrite  : false,
-    blending    : THREE.AdditiveBlending,
+        gl_FragColor = vec4(vColor, smoothstep(0.25, 0.0, d2) * vAlpha);
+      }`,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
   });
-
-  const pts = new THREE.Points(geo, mat);
-  scene.add(pts);
-  return pts;
+  starfield = new THREE.Points(g, m);
+  scene.add(starfield);
 }
 
-/* ============================================================
-   8. 后期处理
-   ============================================================ */
-const composer = new EffectComposer(renderer);
-composer.addPass(new RenderPass(scene, camera));
-
-const bloomPass = new UnrealBloomPass(
-  new THREE.Vector2(window.innerWidth, window.innerHeight),
-  0.45,   // strength —— 柔和
-  0.55,   // radius
-  0.78    // threshold —— 高，仅太阳触发
-);
-composer.addPass(bloomPass);
-composer.addPass(new OutputPass());
-
-/* ============================================================
-   9. 初始化
-   ============================================================ */
-let earth     = null;
-let starfield = null;
-let sunRef    = null;
-
 (async () => {
-  const landGeo = await loadLandGeoJSON();
-
-  if (!landGeo) {
-    console.error('[Earth] 无法加载陆地数据');
-    setProgress('加载失败, 请检查网络');
+  const got = await loadLandGeoJSON();
+  if (!got) {
+    setProgress('加载失败，请检查网络');
     document.querySelector('#bar').classList.add('err');
-    document.getElementById('retry').style.display = 'inline-block';
+    $('retry').classList.add('on');
+    setNote('陆地数据加载失败。请确认通过 <b>HTTP/HTTPS</b> 打开本页面（不要双击 file://），' +
+            '且 <b>vendor/land-10m.json</b> 可访问。');
     return;
   }
+  landGeoRef = got.land;
+  $('s-src').textContent = got.url.indexOf('110m') >= 0 ? 'Natural Earth 1:110m' : 'Natural Earth 1:10m';
 
   setProgress('光栅化陆地边界…'); setBar(0.8); await frame();
-  earth     = await buildEarth(landGeo);
+  landTable = rasterizeLand(got.land);
+  buildInterior();
+  await buildSurface(CFG.targetSamples);
+  buildStarfield();
+  buildSun();
   setBar(1);
-  starfield = buildStarfield();
-  sunRef    = buildSun();
 
-  document.getElementById('status').textContent =
-    `Natural Earth 1:10m · ${earth.count.toLocaleString()} 颗粒子`;
-
-  const el = document.getElementById('loading');
+  const el = $('loading');
   el.classList.add('hide');
   setTimeout(() => el.remove(), 1000);
-  document.getElementById('hint').classList.add('show');
-
-  console.log(
-    `%c✦ 真实粒子地球就绪 · ${earth.count.toLocaleString()} 颗粒子 · ` +
-    `陆地采样 ${earth.landCount.toLocaleString()} 点`,
-    'color:#4a9eff;font-size:13px;font-weight:600;'
-  );
+  $('hint').classList.add('show');
+  setTimeout(() => $('hint').classList.add('gone'), 7000);
 })();
 
-/* ============================================================
-   10. 主循环
-   ============================================================ */
+let colorTimer = null;
+$('c-color').addEventListener('input', (e) => {
+  $('v-color').textContent = e.target.value;
+  new THREE.Color(e.target.value).getHSL(baseHSL);
+  clearTimeout(colorTimer);
+  colorTimer = setTimeout(() => { buildSurface(CFG.targetSamples); buildInterior(); }, 220);
+});
+$('c-den').addEventListener('change', (e) => {
+  const n = +e.target.value;
+  CFG.targetSamples = n;
+  $('v-den').textContent = (n / 1000) + 'k';
+  buildSurface(n);
+});
+$('c-size').addEventListener('input', (e) => {
+  const v = +e.target.value;
+  $('v-size').textContent = v.toFixed(2) + '×';
+  surfMat.uniforms.uSizeScale.value = v;
+});
+$('c-spin').addEventListener('change', (e) => { autoSpin = e.target.checked; });
+$('fs').addEventListener('click', () => {
+  document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+});
+
+let autoSpin = true;
 const clock = new THREE.Clock();
+let spinY = 0, fpsT = 0, fpsN = 0;
 
 function animate() {
   requestAnimationFrame(animate);
-
-  const t = clock.getElapsedTime();
+  const dt = clock.getDelta();
+  const t  = clock.getElapsedTime();
   controls.update();
 
-  if (earth) {
-    earth.spinner.rotation.y = t * 0.05;
-    earth.mat.uniforms.uTime.value     = t;
-    earth.fogMat.uniforms.uTime.value  = t;
-    earth.mistMat.uniforms.uTime.value = t;
-  }
+  if (autoSpin) spinY += dt * 0.05;
+  spinner.rotation.y = spinY;
 
-  if (starfield) {
-    starfield.material.uniforms.uTime.value = t;
-    starfield.rotation.y = t * 0.004;
-  }
+  surfMat.uniforms.uTime.value = t;
+  fogMat.uniforms.uTime.value  = t;
+  mistMat.uniforms.uTime.value = t;
 
-  if (sunRef) {
-    const pulse = 1 + 0.035 * Math.sin(t * 1.1);
-    sunRef.glow.scale.set(80 * pulse, 80 * pulse, 1);
-  }
+  if (starfield) { starfield.material.uniforms.uTime.value = t; starfield.rotation.y = t * 0.004; }
+  if (sunRef) { const p = 1 + 0.035 * Math.sin(t * 1.1); sunRef.glow.scale.set(80 * p, 80 * p, 1); }
+
+  fpsN++; fpsT += dt;
+  if (fpsT >= 0.5) { $('s-fps').textContent = Math.round(fpsN / fpsT); fpsN = 0; fpsT = 0; }
 
   composer.render();
 }
-
 animate();
 
-/* ============================================================
-   11. 自适应
-   ============================================================ */
 window.addEventListener('resize', () => {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-
+  const w = window.innerWidth, h = window.innerHeight;
+  camera.aspect = w / h; camera.updateProjectionMatrix();
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.setSize(w, h);
-
-  composer.setSize(w, h);
-  bloomPass.setSize(w, h);
-
+  composer.setSize(w, h); bloomPass.setSize(w, h);
   const pr = renderer.getPixelRatio();
-  if (earth)   { earth.mat.uniforms.uPixelRatio.value = pr; earth.fogMat.uniforms.uPixelRatio.value = pr; earth.mistMat.uniforms.uPixelRatio.value = pr; }
+  surfMat.uniforms.uPixelRatio.value = pr;
+  fogMat.uniforms.uPixelRatio.value  = pr;
+  mistMat.uniforms.uPixelRatio.value = pr;
   if (starfield) starfield.material.uniforms.uPixelRatio.value = pr;
 });
+
+/* 备用判定：d3.geoContains（真实球面几何，单次约 39ms）。
+   注意：world-atlas 的 land-10m 环缠绕方向与 d3 的球面约定不一致，
+   实测 geoContains 会把大西洋/几内亚湾/南太平洋也判成陆地（恒为 true），
+   因此主判定必须用上面的光栅化查表；此函数仅用于人工对照调试。 */
+window.__geoContains = (lon, lat) => (landGeoRef ? d3.geoContains(landGeoRef, [lon, lat]) : null);
+window.__isLandAt = (lon, lat) => (landTable ? isLandAt(landTable, lon, lat) : null);
 </script>
+
 <script>
-if('serviceWorker' in navigator){
-  window.addEventListener('load',function(){
-    navigator.serviceWorker.register('./sw.js').catch(function(){});
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('./sw.js').catch(function () {});
   });
 }
 </script>

@@ -1,4 +1,4 @@
-const CACHE='zjt-earth-v3';
+const CACHE='zjt-earth-v6';
 const ASSETS=[
 './',
 './vendor/three/build/three.module.js',
