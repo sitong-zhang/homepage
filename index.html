@@ -1,522 +1,601 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>ZJT 分发站</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg viewBox='0 0 48 48' xmlns='http://www.w3.org/2000/svg' style='width:100%;height:100%;display:block'%3E %3Cdefs%3E %3ClinearGradient id='lgA' x1='0' y1='0' x2='1' y2='1'%3E %3Cstop offset='0' stop-color='%232563eb'/%3E%3Cstop offset='.55' stop-color='%235b48e8'/%3E%3Cstop offset='1' stop-color='%237c3aed'/%3E %3C/linearGradient%3E %3ClinearGradient id='lgB' x1='0' y1='0' x2='0' y2='1'%3E %3Cstop offset='0' stop-color='%23ffffff' stop-opacity='.3'/%3E%3Cstop offset='1' stop-color='%23ffffff' stop-opacity='0'/%3E %3C/linearGradient%3E %3C/defs%3E %3Crect x='2' y='2' width='44' height='44' rx='13' fill='url(%23lgA)'/%3E %3Crect x='2' y='2' width='44' height='22' rx='13' fill='url(%23lgB)'/%3E %3Cg transform='translate(9.6,10.4) scale(1.2)'%3E%3Cpath fill='%23ffffff' d='m12 1.608 12 20.784H0Z'/%3E%3C/g%3E %3C/svg%3E">
-<meta name="robots" content="noindex, nofollow">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>真实粒子地球 · Accurate Particle Earth</title>
 <style>
-:root{
-  --bg:#0b1220; --bg2:#0f1a30; --card:#121e36; --card2:#16244a;
-  --gold:#f5c542; --gold2:#ffdd7a; --line:#22335c; --txt:#e8eefc;
-  --mut:#8ba0c9; --ok:#3ddc84; --err:#ff6b6b; --r:14px;
-}
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{background:linear-gradient(160deg,var(--bg) 0%,var(--bg2) 60%,#0a0f1d 100%);color:var(--txt);
-  font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;min-height:100vh;min-height:100dvh;}
-.wrap{max-width:860px;margin:0 auto;padding:0 16px 70px}
-header{display:flex;align-items:center;gap:12px;padding:24px 0 16px}
-.bellbtn{position:relative;background:var(--card);border:1px solid var(--line);border-radius:12px;
-  width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;color:var(--gold)}
-.bellbtn .dot{position:absolute;top:-3px;right:-3px;width:10px;height:10px;border-radius:50%;
-  background:var(--err);border:2px solid var(--bg);display:none}
-.bellbtn .dot.on{display:block}
-.logo{width:46px;height:46px;flex:0 0 auto;box-shadow:0 6px 18px rgba(29,78,216,.35)}
-header h1{font-size:20px;font-weight:800;letter-spacing:.5px}
-header .sub{font-size:12px;color:var(--mut);margin-top:3px}
-.tabs{display:flex;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:6px;margin:14px 0 20px}
-.tab{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px 6px;border-radius:10px;
-  font-size:14px;font-weight:600;color:var(--mut);cursor:pointer;transition:.2s;border:none;background:none}
-.tab svg{width:17px;height:17px}
-.tab.on{background:linear-gradient(135deg,rgba(245,197,66,.16),rgba(245,197,66,.06));color:var(--gold);box-shadow:inset 0 0 0 1px rgba(245,197,66,.35)}
-.view{display:none}.view.on{display:block}
-/* ===== APK 卡片 ===== */
-.apk{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:14px;display:flex;gap:14px;align-items:flex-start}
-.apk .ic{width:56px;height:56px;border-radius:14px;flex:0 0 auto;background:linear-gradient(135deg,#1d4ed8,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff}
-.apk h3{font-size:16px;font-weight:700}
-.apk .meta{font-size:12px;color:var(--mut);margin:4px 0 8px}
-.apk .log{font-size:12.5px;color:var(--mut);line-height:1.6;background:rgba(255,255,255,.03);border-radius:8px;padding:8px 10px;margin-bottom:12px}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,#f5c542,#e8a920);color:#1a1405;font-weight:700;font-size:14px;border:none;border-radius:10px;padding:11px 20px;cursor:pointer;text-decoration:none;transition:.15s}
-.btn svg{width:15px;height:15px}
-.btn:active{transform:scale(.97)}
-.btn.ghost{background:none;color:var(--gold);border:1px solid rgba(245,197,66,.5)}
-.empty{text-align:center;color:var(--mut);padding:36px 0;font-size:13.5px;line-height:1.9}
-/* ===== 账户条 ===== */
-.acct{display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 14px;margin-bottom:14px;font-size:13px}
-.acct .who{flex:1;color:var(--mut);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:7px}
-.acct .who svg{width:15px;height:15px;flex:0 0 auto}
-.acct .who b{color:var(--gold)}
-.acct a{color:var(--gold);text-decoration:none;font-weight:600;font-size:12.5px;flex:0 0 auto;cursor:pointer;margin-left:10px}
-/* ===== 上传 ===== */
-.drop{border:2px dashed rgba(245,197,66,.45);border-radius:16px;background:rgba(245,197,66,.04);padding:34px 18px;text-align:center;cursor:pointer;transition:.2s}
-.drop.on{background:rgba(245,197,66,.1);border-color:var(--gold)}
-.drop .big{color:var(--gold);margin-bottom:10px}.drop .big svg{width:38px;height:38px}
-.drop p{font-size:14.5px;font-weight:600}
-.drop span{font-size:12px;color:var(--mut);display:block;margin-top:8px;line-height:1.7}
-.targ{display:flex;gap:8px;margin:14px 0}
-.tg{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--card);border:1px solid var(--line);color:var(--mut);border-radius:12px;padding:12px 10px;font-size:13.5px;font-weight:600;cursor:pointer;transition:.2s}
-.tg svg{width:16px;height:16px}
-.tg span{font-size:11px;font-weight:400;display:block}
-.tg i{font-style:normal;font-size:11px;color:var(--mut);font-weight:400}
-.tg.on{color:var(--gold);border-color:rgba(245,197,66,.55);background:rgba(245,197,66,.08);box-shadow:0 0 0 1px rgba(245,197,66,.15) inset}
-/* ===== 网盘式文件列表 ===== */
-.sechead{display:flex;align-items:center;gap:8px;margin:20px 0 12px}
-.sechead h2{font-size:14.5px;font-weight:700;display:flex;align-items:center;gap:7px}
-.sechead h2 svg{width:16px;height:16px;color:var(--gold)}
-.sechead .tag{font-size:10.5px;color:var(--mut);border:1px solid var(--line);border-radius:20px;padding:2px 8px}
-.sechead a{margin-left:auto;color:var(--gold);font-size:12px;cursor:pointer;text-decoration:none;display:flex;align-items:center;gap:5px}
-.sechead a svg{width:13px;height:13px}
-.frow{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px}
-.frow .fi{width:38px;height:38px;border-radius:10px;background:var(--card2);display:flex;align-items:center;justify-content:center;flex:0 0 auto;color:var(--gold2)}
-.frow .fi svg{width:19px;height:19px}
-.fmain{flex:1;min-width:0}
-.fn{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.fm{font-size:11.5px;color:var(--mut);margin-top:3px}
-.fops{display:flex;gap:4px;flex:0 0 auto}
-.icobtn{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--card2);color:var(--mut);
-  display:flex;align-items:center;justify-content:center;cursor:pointer;text-decoration:none;transition:.15s}
-.icobtn svg{width:15px;height:15px}
-.icobtn:active{transform:scale(.94)}
-.icobtn.del{color:var(--err)}
-.icobtn.ok{color:var(--ok);border-color:rgba(61,220,132,.4)}
-.upbox{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px}
-.upbox .top{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}
-.upbox .nm{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:8px}
-.upbox .nm svg{width:15px;height:15px;color:var(--gold2);flex:0 0 auto}
-.upbox .sz{font-size:11.5px;color:var(--mut);flex:0 0 auto}
-.bar{height:6px;border-radius:6px;background:#0a1428;overflow:hidden}
-.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#f5c542,#ffdd7a);transition:width .2s;border-radius:6px}
-.st{font-size:11.5px;color:var(--mut);margin-top:7px}
-.st.ok{color:var(--ok)} .st.err{color:var(--err)}
-.note{font-size:11.5px;color:var(--mut);line-height:1.8;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:18px}
-footer{text-align:center;color:#5c6f9c;font-size:11.5px;padding:26px 0 10px;line-height:1.8}
-/* ===== 弹窗 ===== */
-.modal{position:fixed;inset:0;background:rgba(4,8,18,.75);display:none;align-items:center;justify-content:center;z-index:20;padding:20px}
-.modal.on{display:flex}
-.mcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;width:100%;max-width:380px;max-height:82vh;overflow:auto}
-.mcard h3{font-size:16px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
-.mcard h3 svg{width:18px;height:18px;color:var(--gold)}
-.mcard input{width:100%;padding:12px 14px;background:#0a1428;border:1px solid var(--line);border-radius:10px;color:var(--txt);font-size:14px;outline:none;margin-bottom:12px}
-.mcard input:focus{border-color:var(--gold)}
-.mrow{display:flex;gap:8px}.mrow .btn{flex:1}
-.merr{color:var(--err);font-size:12px;min-height:16px;margin-bottom:8px}
-/* ===== 公告 ===== */
-.ann{border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin-bottom:10px;background:rgba(255,255,255,.02)}
-.ann.new{border-color:rgba(245,197,66,.5);background:rgba(245,197,66,.05)}
-.ann .ah{display:flex;align-items:center;gap:8px}
-.ann .at{font-size:13.5px;font-weight:700;flex:1}
-.ann .newtag{font-size:9.5px;color:#1a1405;background:var(--gold);border-radius:6px;padding:1.5px 6px;font-weight:800}
-.ann .atime{font-size:11px;color:var(--mut);flex:0 0 auto}
-.ann .ab{font-size:12.5px;color:var(--mut);line-height:1.8;margin-top:7px;white-space:pre-wrap;word-break:break-word}
-.toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(20px);background:#1c2b52;color:var(--txt);border:1px solid var(--line);padding:10px 20px;border-radius:12px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;z-index:30;max-width:86vw}
-.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    overflow: hidden;
+    background: #000206;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+  }
+  canvas { display: block; }
+
+  #loading {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 22px;
+    background: radial-gradient(circle at 50% 50%, #041020 0%, #000206 70%);
+    color: #6ab7ff;
+    font-size: 13px;
+    letter-spacing: 0.35em;
+    text-indent: 0.35em;
+    transition: opacity 0.9s ease;
+  }
+  #loading.hide { opacity: 0; pointer-events: none; }
+
+  .loader-ring {
+    width: 46px; height: 46px;
+    border-radius: 50%;
+    border: 1.5px solid rgba(80, 150, 255, 0.15);
+    border-top-color: #4a9eff;
+    border-right-color: #4a9eff;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #progress {
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: rgba(100, 160, 240, 0.5);
+    font-variant-numeric: tabular-nums;
+    min-height: 16px;
+  }
+
+  #hint {
+    position: fixed;
+    bottom: 22px; left: 50%;
+    transform: translateX(-50%);
+    color: rgba(130, 180, 255, 0.32);
+    font-size: 11.5px;
+    letter-spacing: 0.18em;
+    pointer-events: none;
+    user-select: none;
+    white-space: nowrap;
+    transition: opacity 1.2s ease 2s;
+    opacity: 0;
+  }
+  #hint.show { opacity: 1; }
+
+  #status {
+    position: fixed;
+    top: 16px; left: 16px;
+    color: rgba(120, 170, 230, 0.28);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    pointer-events: none;
+    user-select: none;
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <button class="bellbtn" id="annBtn" onclick="openAnn()" aria-label="公告"><span class="ic"></span><span class="dot" id="annDot"></span></button>
-    <div class="logo"><svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%;display:block">
-<defs>
-<linearGradient id="lgA" x1="0" y1="0" x2="1" y2="1">
-<stop offset="0" stop-color="#2563eb"/><stop offset=".55" stop-color="#5b48e8"/><stop offset="1" stop-color="#7c3aed"/>
-</linearGradient>
-<linearGradient id="lgB" x1="0" y1="0" x2="0" y2="1">
-<stop offset="0" stop-color="#ffffff" stop-opacity=".3"/><stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
-</linearGradient>
-</defs>
-<rect x="2" y="2" width="44" height="44" rx="13" fill="url(#lgA)"/>
-<rect x="2" y="2" width="44" height="22" rx="13" fill="url(#lgB)"/>
-<g transform="translate(9.6,10.4) scale(1.2)"><path fill="#ffffff" d="m12 1.608 12 20.784H0Z"/></g>
-</svg></div>
-    <div><h1>ZJT 分发站</h1><div class="sub">APK 下载 · 文件托管</div></div>
-  </header>
 
-  <div class="tabs">
-    <button class="tab on" id="t1" onclick="sw(1)"><span class="ic" data-i="package"></span>APK 下载</button>
-    <button class="tab" id="t2" onclick="sw(2)"><span class="ic" data-i="folder"></span>文件托管</button>
-    <button class="tab" id="t3" onclick="sw(3)"><span class="ic" data-i="globe"></span>3D 地球</button>
-  </div>
-
-  <!-- APK 区 -->
-  <div class="view on" id="v1"><div id="apklist"></div></div>
-
-  <!-- 文件托管区 -->
-  <div class="view" id="v2">
-    <div class="acct" id="acctbar"></div>
-    <div class="drop" id="drop" onclick="document.getElementById('fp').click()">
-      <div class="big"><span class="ic" data-i="cloud-upload"></span></div>
-      <p>点击选择文件，或将文件拖到此处</p>
-      <span>先选择下方存放位置 · 支持多选 · 手机 / 电脑均可</span>
-    </div>
-    <input type="file" id="fp" multiple style="display:none">
-    <div class="targ">
-      <button class="tg on" id="tg0" onclick="setTarg(0)"><span class="ic" data-i="globe"></span>公开区 <i>所有人可见</i></button>
-      <button class="tg" id="tg1" onclick="setTarg(1)"><span class="ic" data-i="lock"></span>私密区 <i>仅自己可见</i></button>
-    </div>
-
-    <div class="sechead"><h2><span class="ic" data-i="globe"></span>公开区</h2><span class="tag">所有人可见</span><a onclick="loadPublic()"><span class="ic" data-i="refresh-cw"></span>刷新</a></div>
-    <div id="publist"></div>
-
-    <div id="privsec" style="display:none">
-      <div class="sechead"><h2><span class="ic" data-i="lock"></span>私密区</h2><span class="tag">仅自己可见</span></div>
-      <div id="privlist"></div>
-    </div>
-
-    <div class="note">请勿上传违法违规内容；重要文件请自行留存备份。</div>
-  </div>
-
-<div class="view" id="v3">
-    <iframe id="earthframe" style="width:100%;height:74vh;border:0;border-radius:14px;background:#000206;display:block" title="3D 地球"></iframe>
-  </div>
-
-  <footer>© 2026 ZJT 分发站</footer>
+<div id="loading">
+  <div class="loader-ring"></div>
+  <div>加载高精度陆地数据</div>
+  <div id="progress"></div>
 </div>
 
-<!-- 账户弹窗 -->
-<div class="modal" id="modal">
-  <div class="mcard">
-    <h3><span class="ic" data-i="user"></span><span id="mtitle">创建账户</span></h3>
-    <div class="merr" id="merr"></div>
-    <input id="mi1" placeholder="昵称" autocomplete="off">
-    <input id="mi2" type="password" placeholder="密码" autocomplete="new-password">
-    <div class="mrow">
-      <button class="btn" id="mok" onclick="mOk()">创建并登录</button>
-      <button class="btn ghost" onclick="mClose()">取消</button>
-    </div>
-  </div>
-</div>
+<div id="hint">拖动旋转 · 滚轮缩放 · 转到背面可见太阳</div>
+<div id="status"></div>
 
-<!-- 公告弹窗 -->
-<div class="modal" id="annModal">
-  <div class="mcard">
-    <h3><span class="ic" data-i="megaphone"></span>公告</h3>
-    <div id="annList"></div>
-    <div class="mrow"><button class="btn" onclick="ackAnn()">我知道了</button></div>
-  </div>
-</div>
+<!-- ===== 全局脚本：TopoJSON 与 D3-Geo ===== -->
+<script src="./vendor/topojson-client.min.js"></script>
+<script src="./vendor/d3-array.min.js"></script>
+<script src="./vendor/d3-geo.min.js"></script>
 
-<div class="toast" id="toast"></div>
-<script src="icons.js"></script>
-<script>
-/* ================= 图标 ================= */
-document.querySelectorAll('.ic[data-i]').forEach(el=>{el.innerHTML=LUCIDE[el.dataset.i]||''});
-document.querySelector('#annBtn .ic').innerHTML=LUCIDE['bell']||'';
-function ic(n){return '<span class="inl" style="display:inline-flex;vertical-align:-3px">'+(LUCIDE[n]||'')+'</span>'}
-function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2000)}
-function fmt(b){if(b==null)return'';const u=['B','KB','MB','GB'];let i=0;while(b>=1024&&i<3){b/=1024;i++}return b.toFixed(b<10&&i>0?1:0)+' '+u[i]}
-function ticon(n){n=(n||'').toLowerCase();
-  if(/\.(jpe?g|png|gif|webp|bmp|svg)$/.test(n))return 'image';
-  if(/\.(mp4|mov|avi|mkv|webm|flv)$/.test(n))return 'file-video';
-  if(/\.(mp3|wav|amr|flac|m4a|aac|ogg)$/.test(n))return 'file-audio';
-  if(/\.(zip|rar|7z|tar|gz|bz2)$/.test(n))return 'file-archive';
-  if(/\.apk$/.test(n))return 'package';
-  if(/\.(txt|md|pdf|docx?|xlsx?|pptx?|json|html|csv)$/.test(n))return 'file-text';
-  return 'file'}
-const FB='https://'+'file'+'bin.'+'net';
-const PUB_BIN='zjt-pub-9k2m';
-
-/* ================= 公告 ================= */
-let ANN={list:[]};
-async function loadAnn(){
-  try{
-    const r=await fetch('announcements.json?v='+Date.now(),{cache:'no-store'});
-    const d=await r.json();ANN=Array.isArray(d)?{list:d}:(d.list?d:{list:d.list||[]});
-    if(!Array.isArray(ANN.list))ANN.list=[];
-  }catch(e){ANN={list:[]}}
-  renderAnnDot();
-  const seen=localStorage.getItem('zjt_ann_seen');
-  if(ANN.list.length&&(!seen||ANN.list[0].id!==seen))openAnn();
-}
-function renderAnnDot(){
-  const seen=localStorage.getItem('zjt_ann_seen');
-  const has=ANN.list.length&&(!seen||ANN.list[0].id!==seen);
-  document.getElementById('annDot').classList.toggle('on',!!has);
-}
-function openAnn(){
-  const box=document.getElementById('annList');
-  box.innerHTML=ANN.list.map((a,i)=>`
-    <div class="ann ${i===0?'new':''}">
-      <div class="ah"><div class="at">${esc(a.title)}</div>${i===0?'<span class="newtag">NEW</span>':''}<div class="atime">${esc(a.time||'')}</div></div>
-      <div class="ab">${esc(a.body)}</div>
-    </div>`).join('')||'<div class="empty">暂无公告</div>';
-  document.getElementById('annModal').classList.add('on');
-}
-function ackAnn(){
-  if(ANN.list.length)localStorage.setItem('zjt_ann_seen',ANN.list[0].id);
-  document.getElementById('annModal').classList.remove('on');
-  renderAnnDot();
-}
-loadAnn();
-
-/* ================= Tabs ================= */
-function sw(n){
-  for(let i=1;i<=3;i++){
-    document.getElementById('t'+i).classList.toggle('on',i===n);
-    document.getElementById('v'+i).classList.toggle('on',i===n);
-  }
-  if(n===2)loadPublic();
-  if(n===3)initEarth();
-}
-
-let earthLoaded=false;
-function initEarth(){
-  if(earthLoaded)return;
-  document.getElementById('earthframe').src='earth.html';
-  earthLoaded=true;
-}
-
-/* ================= APK 区 ================= */
-async function loadApps(){
-  const box=document.getElementById('apklist');
-  try{
-    const r=await fetch('apps.json?v='+Date.now(),{cache:'no-store'});
-    const d=await r.json();
-    const list=Array.isArray(d)?d:(d.apps||[]);
-    if(!list.length){box.innerHTML='<div class="empty">📦 暂无上架应用<br>新版本将在此第一时间发布</div>';return}
-    box.innerHTML=list.map((a,i)=>`
-      <div class="apk">
-        <div class="ic">${esc(a.icon||'⚡')}</div>
-        <div style="flex:1;min-width:0">
-          <h3>${esc(a.name)}</h3>
-          <div class="meta">v${esc(a.version)} · ${a.size?('≈'+esc(a.size)+' · '):''}${esc(a.date||'')}</div>
-          ${a.log?`<div class="log">${esc(a.log)}</div>`:''}
-          <a class="btn" href="${esc(a.url)}"><span class="inl" style="display:inline-flex;vertical-align:-3px">${LUCIDE['download']}</span>下载 APK</a>
-        </div>
-      </div>`).join('');
-  }catch(e){box.innerHTML='<div class="empty">应用列表加载失败，请刷新重试</div>'}
-}
-loadApps();
-
-/* ================= 账户 ================= */
-let ACCT=null;
-try{ACCT=JSON.parse(localStorage.getItem('zjt_acct')||'null')}catch(e){}
-function privRecs(){try{return JSON.parse(localStorage.getItem('zjt_files')||'[]')}catch(e){return[]}}
-function savePriv(a){localStorage.setItem('zjt_files',JSON.stringify(a))}
-function renderAcct(){
-  const b=document.getElementById('acctbar');
-  if(ACCT){b.innerHTML=`<div class="who">${ic('user')} <b>${esc(ACCT.n)}</b>&nbsp;· 已登录</div><a onclick="logout()">${ic('log-out')}退出</a>`}
-  else{b.innerHTML=`<div class="who">${ic('user')} 未登录 · 私密区需创建账户</div><a onclick="mOpen('reg')">创建账户</a><a onclick="mOpen('login')">登录</a>`}
-  document.getElementById('privsec').style.display=ACCT?'block':'none';
-  renderPriv();
-}
-function logout(){localStorage.removeItem('zjt_acct');ACCT=null;setTarg(0);renderAcct();toast('已退出')}
-function mOpen(kind){
-  document.getElementById('modal').classList.add('on');
-  document.getElementById('merr').textContent='';
-  document.getElementById('mtitle').textContent=kind==='reg'?'创建账户':'登录账户';
-  document.getElementById('mok').textContent=kind==='reg'?'创建并登录':'登录';
-  document.getElementById('mok').dataset.k=kind;
-  document.getElementById('mi1').value='';document.getElementById('mi2').value='';
-}
-function mClose(){document.getElementById('modal').classList.remove('on')}
-function mOk(){
-  const k=document.getElementById('mok').dataset.k;
-  const n=document.getElementById('mi1').value.trim(), p=document.getElementById('mi2').value;
-  const er=document.getElementById('merr');
-  if(!n||!p){er.textContent='昵称和密码不能为空';return}
-  if(k==='reg'){
-    ACCT={n,p};localStorage.setItem('zjt_acct',JSON.stringify(ACCT));
-    renderAcct();mClose();toast('账户已创建');
-  }else{
-    const a=(()=>{try{return JSON.parse(localStorage.getItem('zjt_acct')||'null')}catch(e){return null}})();
-    if(a&&a.n===n&&a.p===p){ACCT=a;renderAcct();mClose();toast('登录成功')}
-    else er.textContent='账户不存在或密码错误';
+<script type="importmap">
+{
+  "imports": {
+    "three": "./vendor/three/build/three.module.js",
+    "three/addons/": "./vendor/three/examples/jsm/"
   }
 }
-renderAcct();
+</script>
 
-/* ================= 存放位置选择 ================= */
-let TARG=0;
-function setTarg(m){
-  if(m===1&&!ACCT){mOpen('reg');toast('私密区需先创建账户');return}
-  TARG=m;
-  document.getElementById('tg0').classList.toggle('on',m===0);
-  document.getElementById('tg1').classList.toggle('on',m===1);
-}
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls }   from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer }  from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass }      from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass }      from 'three/addons/postprocessing/OutputPass.js';
 
-/* ================= 私密区 ================= */
-function renderPriv(){
-  const box=document.getElementById('privlist');
-  if(!ACCT){box.innerHTML='';return}
-  const recs=privRecs();
-  if(!recs.length){box.innerHTML='<div class="empty">暂无私密文件<br>在这里上传的文件仅自己可见</div>';return}
-  box.innerHTML='';
-  recs.forEach(r=>{
-    const d=document.createElement('div');d.className='frow';
-    d.innerHTML=`<div class="fi"><span class="ic" data-i="${ticon(r.n)}"></span></div>
-      <div class="fmain"><div class="fn">${esc(r.n)}</div><div class="fm">${fmt(r.s)} · ${esc(r.d||'')}</div></div>
-      <div class="fops">
-        <a class="icobtn" href="${esc(r.u)}" target="_blank" rel="noopener" title="打开">${LUCIDE['external-link']}</a>
-        <button class="icobtn" title="复制链接" onclick="cpLink(this,'${esc(r.u)}')">${LUCIDE['copy']}</button>
-        <button class="icobtn del" title="删除" onclick="delPriv(this)">${LUCIDE['trash-2']}</button>
-      </div>`;
-    d.querySelector('.fi .ic').innerHTML=LUCIDE[ticon(r.n)]||LUCIDE['file'];
-    d.dataset.rec=JSON.stringify(r);
-    box.appendChild(d);
-  });
-}
-async function delPriv(btn){
-  const el=btn.closest('.frow');const r=JSON.parse(el.dataset.rec);
-  btn.disabled=true;btn.style.opacity=.4;
-  await platformDelete(r);
-  savePriv(privRecs().filter(x=>x.u!==r.u));
-  renderPriv();toast('已删除');
-}
-async function platformDelete(r){
-  try{
-    if(r.t==='f'&&r.del)await fetch(r.del,{method:'DELETE'});
-    else if(r.t==='g'&&r.tk&&r.cid&&r.sv)await fetch('https://'+r.sv+'.'+'go'+'file'+'.io/contents/'+r.cid,{method:'DELETE',headers:{'Authorization':'Bearer '+r.tk}});
-  }catch(e){}
-}
+/* ============================================================
+   0. 全局配置
+   ============================================================ */
+const CFG = {
+  radius        : 2.0,
+  targetSamples : 200000,   // 球面目标采样数（最终粒子数 ≈ 陆地占比 × 此值）
+  oceanKeep     : 0.02,     // 海洋粒子保留率（极低，仅作轮廓暗示）
+};
 
-/* ================= 公开区 ================= */
-let PUB=[];
-async function loadPublic(){
-  const box=document.getElementById('publist');
-  box.innerHTML='<div class="st" style="padding:6px 2px">加载中…</div>';
-  try{
-    const r=await fetch(`${FB}/${PUB_BIN}`,{headers:{'Accept':'application/json'},cache:'no-store'});
-    if(r.status===404){PUB=[];renderPub();return}
-    if(!r.ok)throw 0;
-    const d=await r.json();
-    const all=(d.files||[]);
-    const dead=new Set(all.filter(f=>f.filename.startsWith('__del__'))
-      .map(f=>f.filename.slice(7).replace(/__[a-z0-9]{6,10}\.d$/i,'')));
-    PUB=all.filter(f=>!f.filename.startsWith('__del__')&&!dead.has(f.filename))
-      .map(f=>({n:f.filename,s:f.bytes,u:`${FB}/${PUB_BIN}/${encodeURIComponent(f.filename)}`,
-      d:(f.uploaded_at||'').slice(5,16).replace('T',' ')}));
-    renderPub();
-  }catch(e){box.innerHTML='<div class="st err" style="padding:6px 2px">列表加载失败，点「刷新」重试</div>'}
-}
-function renderPub(){
-  const box=document.getElementById('publist');
-  if(!PUB.length){box.innerHTML='<div class="empty">暂无公开文件<br>在这里上传的文件所有人可见</div>';return}
-  box.innerHTML='';
-  PUB.forEach(f=>{
-    const d=document.createElement('div');d.className='frow';
-    d.innerHTML=`<div class="fi"></div>
-      <div class="fmain"><div class="fn">${esc(f.n)}</div><div class="fm">${fmt(f.s)}${f.d?' · '+esc(f.d):''}</div></div>
-      <div class="fops">
-        <a class="icobtn" href="${esc(f.u)}" target="_blank" rel="noopener" title="下载">${LUCIDE['download']}</a>
-        <button class="icobtn" title="复制链接" onclick="cpLink(this,'${esc(f.u)}')">${LUCIDE['copy']}</button>
-        <button class="icobtn del" title="删除" onclick="delPub(this)">${LUCIDE['trash-2']}</button>
-      </div>`;
-    d.querySelector('.fi').innerHTML=LUCIDE[ticon(f.n)]||LUCIDE['file'];
-    d.dataset.fn=f.n;
-    box.appendChild(d);
-  });
-}
-async function delPub(btn){
-  const el=btn.closest('.frow');const fn=el.dataset.fn;
-  btn.disabled=true;btn.style.opacity=.4;btn.title='删除中';
-  const marker='__del__'+fn+'__'+Math.random().toString(36).slice(2,10)+'.d';
-  const ok=await new Promise(res=>{
-    const x=new XMLHttpRequest();
-    x.open('POST',`${FB}/${PUB_BIN}/${encodeURIComponent(marker)}`);x.timeout=60000;
-    x.onload=()=>res(x.status>=200&&x.status<300);
-    x.ontimeout=()=>res(false);x.onerror=()=>res(false);
-    x.send(new Blob(['delete'],{type:'text/plain'}));
-  });
-  if(!ok){btn.disabled=false;btn.style.opacity=1;toast('删除失败，请检查网络后重试');return}
-  try{await fetch(`${FB}/${PUB_BIN}/${encodeURIComponent(fn)}`,{method:'DELETE'})}catch(e){}
-  PUB=PUB.filter(x=>x.n!==fn);renderPub();toast('已删除');
-}
-function cpLink(btn,u){
-  (navigator.clipboard?navigator.clipboard.writeText(u):Promise.reject())
-    .then(()=>{btn.classList.add('ok');toast('链接已复制');setTimeout(()=>btn.classList.remove('ok'),1200)})
-    .catch(()=>{const i=document.createElement('textarea');i.value=u;document.body.appendChild(i);i.select();document.execCommand('copy');i.remove();btn.classList.add('ok');toast('链接已复制');setTimeout(()=>btn.classList.remove('ok'),1200)});
+// 太阳方向（世界空间，地球 → 太阳）
+const SUN_DIR   = new THREE.Vector3(0.60, 0.28, 0.75).normalize();
+const SUN_DIST  = 260;
+const SUN_RADIUS = 8;
+
+/* ============================================================
+   1. 渲染器 / 场景 / 相机
+   ============================================================ */
+const renderer = new THREE.WebGLRenderer({
+  antialias: true,
+  powerPreference: 'high-performance',
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x000206);
+
+const camera = new THREE.PerspectiveCamera(
+  50, window.innerWidth / window.innerHeight, 0.1, 4000
+);
+camera.position.set(0, 1.6, 6.8);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.055;
+controls.rotateSpeed   = 0.65;
+controls.zoomSpeed     = 0.8;
+controls.minDistance   = 3.2;
+controls.maxDistance   = 24;
+controls.enablePan     = false;
+controls.target.set(0, 0, 0);
+
+/* ============================================================
+   2. 高精度陆地数据 —— Natural Earth 1:10m
+      使用 TopoJSON → GeoJSON → d3.geoContains 精确判定
+   ============================================================ */
+const progressEl = document.getElementById('progress');
+
+function setProgress(text) {
+  progressEl.textContent = text;
 }
 
-/* ================= 上传 ================= */
-const drop=document.getElementById('drop');
-['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('on')}));
-['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('on')}));
-drop.addEventListener('drop',e=>handle([...e.dataTransfer.files]));
-document.getElementById('fp').addEventListener('change',e=>{handle([...e.target.files]);e.target.value=''});
+async function loadLandGeoJSON() {
+  const URLS = [
+    './vendor/land-10m.json',
+  ];
 
-function upCard(f,listId){
-  const d=document.createElement('div');d.className='upbox';
-  d.innerHTML=`<div class="top"><div class="nm">${LUCIDE[ticon(f.name)]||LUCIDE['file']}${esc(f.name)}</div><div class="sz">${fmt(f.size)}</div></div>
-    <div class="bar"><i></i></div><div class="st">排队中…</div>`;
-  document.getElementById(listId).prepend(d);
-  return {el:d,bar:d.querySelector('.bar i'),st:d.querySelector('.st')};
-}
-async function handle(files){
-  for(const f of files){ if(TARG===0)await upPublic(f); else await upPrivate(f); }
-}
-function failMsg(c){c.st.className='st err';c.st.textContent='上传失败，请检查网络后重试'}
-/* —— 公开 —— */
-function upPublic(f){
-  const c=upCard(f,'publist');c.st.textContent='上传中…';
-  return new Promise(resolve=>{
-    const rnd=Math.random().toString(36).slice(2,6);
-    const send=fn=>new Promise((res,rej)=>{
-      const x=new XMLHttpRequest();
-      x.open('POST',`${FB}/${PUB_BIN}/${encodeURIComponent(fn)}`);
-      x.timeout=120000;
-      x.upload.onprogress=e=>{if(e.lengthComputable)c.bar.style.width=(e.loaded/e.total*100)+'%'};
-      x.onload=()=>res(x);x.ontimeout=()=>rej(0);x.onerror=()=>rej(0);
-      x.send(f);
-    });
-    (async()=>{
-      try{
-        let x=await send(f.name);
-        if(x.status>=400)x=await send(f.name.replace(/(\.[^.]+)?$/,m=>'_'+rnd+(m||'')));
-        if(x.status>=200&&x.status<300){
-          c.bar.style.width='100%';c.st.className='st ok';c.st.textContent='上传完成';
-          setTimeout(()=>{c.el.remove();loadPublic()},700);
-        }else{c.st.className='st err';c.st.textContent='上传失败，请重试'}
-      }catch(e){failMsg(c)}
-      resolve();
-    })();
-  });
-}
-/* —— 私密 —— */
-async function upPrivate(f){
-  const c=upCard(f,'privlist');c.st.textContent='上传中…';
-  try{
-    const r=await fetch('https://api.'+'go'+'file'+'.io/servers',{cache:'no-store'});
-    if(!r.ok)throw 0;
-    const d=await r.json();const s=d.data.servers[0].name;
-    const j=await xupload('https://'+s+'.'+'go'+'file'+'.io/contents/uploadfile',f,c);
-    if(j&&j.status==='ok'&&j.data&&j.data.downloadPage){
-      c.bar.style.width='100%';c.st.className='st ok';c.st.textContent='上传完成';
-      savePriv([{n:f.name,s:f.size,u:j.data.downloadPage,t:'g',tk:j.data.guestToken||'',cid:j.data.id||'',sv:s,d:new Date().toLocaleString('zh-CN',{hour12:false})},...privRecs()]);
-      setTimeout(()=>{c.el.remove();renderPriv()},700);
-    }else throw 0;
-  }catch(e1){
-    c.bar.style.width='0%';c.st.textContent='切换通道…';
-    try{await upFilebinPriv(f,c)}catch(e2){failMsg(c)}
+  for (const url of URLS) {
+    try {
+      setProgress('下载 1:10m 陆地边界…');
+      const res = await fetch(url);
+      if (!res.ok) continue;
+      const topo = await res.json();
+
+      // TopoJSON → GeoJSON MultiPolygon
+      const land = topojson.feature(topo, topo.objects.land);
+      console.log('[Earth] ✓ Natural Earth 1:10m 陆地数据已加载');
+      return land;
+    } catch (e) {
+      console.warn('[Earth] 源失败:', url, e);
+    }
   }
+  return null;
 }
-function upFilebinPriv(f,c){
-  return new Promise((res,rej)=>{
-    const bin=Math.random().toString(36).slice(2,10);
-    const url=`${FB}/${bin}/${encodeURIComponent(f.name)}`;
-    const x=new XMLHttpRequest();x.open('POST',url);x.timeout=120000;
-    x.upload.onprogress=e=>{if(e.lengthComputable)c.bar.style.width=(e.loaded/e.total*100)+'%'};
-    x.onload=()=>{
-      if(x.status>=200&&x.status<300){
-        const u=`${FB}/${bin}`;
-        c.bar.style.width='100%';c.st.className='st ok';c.st.textContent='上传完成';
-        savePriv([{n:f.name,s:f.size,u,t:'f',del:url,d:new Date().toLocaleString('zh-CN',{hour12:false})},...privRecs()]);res();
-      }else rej(0);
-    };
-    x.ontimeout=()=>rej(0);x.onerror=()=>rej(0);x.send(f);
+
+/* ============================================================
+   3. 几何工具
+   ============================================================ */
+// 球面均匀采样（Fibonacci）
+function fibSphere(i, n) {
+  const y     = 1 - (i / (n - 1)) * 2;
+  const r     = Math.sqrt(Math.max(0, 1 - y * y));
+  const theta = i * Math.PI * (3 - Math.sqrt(5));
+  return [Math.cos(theta) * r, y, Math.sin(theta) * r];
+}
+
+// 笛卡尔 → 经纬度（度）
+function toLonLat(x, y, z) {
+  const len = Math.sqrt(x * x + y * y + z * z) || 1;
+  const nx = x / len, ny = y / len, nz = z / len;
+  const lon = Math.atan2(nz, nx) * 180 / Math.PI;          // -180 .. 180
+  const lat = Math.asin(Math.max(-1, Math.min(1, ny))) * 180 / Math.PI; // -90 .. 90
+  return [lon, lat];
+}
+
+/* ============================================================
+   4. 着色器
+   ------------------------------------------------------------
+   光照固定在世界空间指向太阳；
+   粒子为圆形点，带柔和发光。
+   ============================================================ */
+const VERT = /* glsl */`
+  attribute float size;
+  attribute vec3  aColor;
+
+  uniform float uPixelRatio;
+  uniform float uSizeScale;
+  uniform vec3  uLightDir;      // 世界空间：星球 → 太阳
+
+  varying vec3  vColor;
+
+  void main() {
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+
+    // 世界空间法线（球面方向即法线）
+    vec3 n = normalize(mat3(modelMatrix) * normalize(position));
+
+    // 太阳漫反射（柔和明暗交界）
+    float d   = dot(n, uLightDir);
+    float sun = smoothstep(-0.08, 0.55, d);
+
+    // 受光面：暖白；背光面：极暗冷蓝
+    vec3 tint = mix(vec3(0.08, 0.11, 0.18), vec3(1.0, 0.97, 0.92), sun);
+
+    vColor = aColor * tint;
+
+    gl_PointSize = size * uSizeScale * uPixelRatio * (26.0 / -mvPosition.z);
+    gl_Position  = projectionMatrix * mvPosition;
+  }
+`;
+
+const FRAG = /* glsl */`
+  varying vec3 vColor;
+
+  void main() {
+    // 圆形点 + 柔和边缘
+    vec2  uv = gl_PointCoord - 0.5;
+    float d2 = dot(uv, uv);
+    if (d2 > 0.25) discard;
+
+    float a = smoothstep(0.25, 0.02, d2);
+    gl_FragColor = vec4(vColor, a);
+  }
+`;
+
+/* ============================================================
+   5. 构建粒子地球
+   ============================================================ */
+function buildEarth(landGeo) {
+  const N = CFG.targetSamples;
+  const R = CFG.radius;
+
+  const posArr  = [];
+  const colArr  = [];
+  const sizeArr = [];
+
+  const col = new THREE.Color();
+
+  // 预缓存陆地 MultiPolygon（d3.geoContains 接受 Feature 或 Geometry）
+  const landFeature = landGeo;
+
+  let checked = 0;
+  let landCount = 0;
+  let oceanCount = 0;
+
+  for (let i = 0; i < N; i++) {
+    const [x, y, z] = fibSphere(i, N);
+
+    // 每隔一定数量更新进度
+    if (i % 8000 === 0) {
+      setProgress(`采样陆地粒子… ${Math.round(i / N * 100)}%`);
+    }
+
+    // 经纬度判定
+    const [lon, lat] = toLonLat(x, y, z);
+    const isLand = d3.geoContains(landFeature, [lon, lat]);
+
+    checked++;
+
+    if (isLand) {
+      landCount++;
+    } else {
+      // 海洋：极低概率保留，仅作轮廓暗示
+      if (Math.random() > CFG.oceanKeep) continue;
+      oceanCount++;
+    }
+
+    // 半径微抖动，形成薄壳
+    const jitter = 1 + (Math.random() - 0.5) * 0.008;
+    const rr     = R * jitter * (isLand ? 1.006 : 1.0);
+
+    posArr.push(x * rr, y * rr, z * rr);
+
+    if (isLand) {
+      // 陆地：青蓝 → 浅冰蓝，带纬度变化
+      const t = Math.random();
+      const latFactor = Math.abs(lat) / 90; // 极地更白
+      col.setHSL(
+        0.540 + t * 0.040 - latFactor * 0.02,
+        0.65  - t * 0.30 - latFactor * 0.25,
+        0.52  + t * 0.14 + latFactor * 0.12
+      );
+    } else {
+      // 海洋：深蓝
+      const t = Math.random();
+      col.setHSL(0.610 + t * 0.030, 0.88, 0.10 + t * 0.08);
+    }
+
+    colArr.push(col.r, col.g, col.b);
+
+    // 粒子大小：陆地更大，海洋极小
+    sizeArr.push(
+      isLand
+        ? 1.30 + Math.random() * 0.90
+        : 0.50 + Math.random() * 0.30
+    );
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(posArr, 3));
+  geo.setAttribute('aColor',   new THREE.Float32BufferAttribute(colArr, 3));
+  geo.setAttribute('size',     new THREE.Float32BufferAttribute(sizeArr, 1));
+  geo.computeBoundingSphere();
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      uPixelRatio : { value: renderer.getPixelRatio() },
+      uSizeScale  : { value: 1.0 },
+      uLightDir   : { value: SUN_DIR.clone() },
+    },
+    vertexShader   : VERT,
+    fragmentShader : FRAG,
+    transparent    : true,
+    depthWrite     : true,
+    depthTest      : true,
+    blending       : THREE.NormalBlending,
   });
+
+  const points = new THREE.Points(geo, mat);
+
+  // 地轴倾角 23.5°
+  const group = new THREE.Group();
+  group.rotation.z = THREE.MathUtils.degToRad(23.5);
+  group.add(points);
+  scene.add(group);
+
+  console.log(
+    `[Earth] 采样 ${checked} 点 · 陆地 ${landCount} · 海洋 ${oceanCount} · ` +
+    `最终粒子 ${posArr.length / 3}`
+  );
+
+  return { points, mat, group, count: posArr.length / 3, landCount };
 }
-function xupload(url,f,c){
-  return new Promise((res,rej)=>{
-    const x=new XMLHttpRequest();x.open('POST',url);x.timeout=120000;
-    x.upload.onprogress=e=>{if(e.lengthComputable)c.bar.style.width=(e.loaded/e.total*90)+'%'};
-    x.onload=()=>{try{res(JSON.parse(x.responseText))}catch(e){rej(e)}};
-    x.ontimeout=()=>rej(0);x.onerror=()=>rej(0);
-    const fd=new FormData();fd.append('file',f);x.send(fd);
+
+/* ============================================================
+   6. 远处太阳
+   ============================================================ */
+function makeGlowTexture() {
+  const S = 256;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = S;
+  const ctx = cv.getContext('2d');
+
+  const g = ctx.createRadialGradient(S / 2, S / 2, 0, S / 2, S / 2, S / 2);
+  g.addColorStop(0.00, 'rgba(255, 250, 235, 1.00)');
+  g.addColorStop(0.14, 'rgba(255, 225, 170, 0.72)');
+  g.addColorStop(0.34, 'rgba(255, 180,  95, 0.24)');
+  g.addColorStop(0.62, 'rgba(255, 140,  50, 0.07)');
+  g.addColorStop(1.00, 'rgba(255, 110,  20, 0.00)');
+
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, S, S);
+
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+function buildSun() {
+  const sunPos = SUN_DIR.clone().multiplyScalar(SUN_DIST);
+
+  // 核心
+  const coreGeo = new THREE.SphereGeometry(SUN_RADIUS, 32, 32);
+  const coreMat = new THREE.MeshBasicMaterial({ color: 0xfff4dd });
+  const core = new THREE.Mesh(coreGeo, coreMat);
+  core.position.copy(sunPos);
+  scene.add(core);
+
+  // 光晕
+  const glowMat = new THREE.SpriteMaterial({
+    map        : makeGlowTexture(),
+    color      : 0xffd9a0,
+    blending   : THREE.AdditiveBlending,
+    transparent: true,
+    depthWrite : false,
+    depthTest  : true,
   });
+  const glow = new THREE.Sprite(glowMat);
+  glow.position.copy(sunPos);
+  glow.scale.set(80, 80, 1);
+  scene.add(glow);
+
+  return { core, glow, pos: sunPos };
 }
+
+/* ============================================================
+   7. 深空背景星尘
+   ============================================================ */
+function buildStarfield() {
+  const COUNT = 4500;
+  const pos = new Float32Array(COUNT * 3);
+  const col = new Float32Array(COUNT * 3);
+  const siz = new Float32Array(COUNT);
+  const pha = new Float32Array(COUNT);
+
+  const c = new THREE.Color();
+
+  for (let i = 0; i < COUNT; i++) {
+    const r     = 60 + Math.pow(Math.random(), 0.6) * 700;
+    const theta = Math.random() * Math.PI * 2;
+    const phi   = Math.acos(2 * Math.random() - 1);
+
+    pos[i * 3    ] = r * Math.sin(phi) * Math.cos(theta);
+    pos[i * 3 + 1] = r * Math.cos(phi);
+    pos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+
+    c.setHSL(Math.random(), 0.60, 0.14 + Math.random() * 0.20);
+    col[i * 3    ] = c.r;
+    col[i * 3 + 1] = c.g;
+    col[i * 3 + 2] = c.b;
+
+    siz[i] = 0.7 + Math.random() * 2.0;
+    pha[i] = Math.random() * Math.PI * 2;
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('aColor',   new THREE.BufferAttribute(col, 3));
+  geo.setAttribute('size',     new THREE.BufferAttribute(siz, 1));
+  geo.setAttribute('phase',    new THREE.BufferAttribute(pha, 1));
+
+  const mat = new THREE.ShaderMaterial({
+    uniforms: {
+      uTime       : { value: 0 },
+      uPixelRatio : { value: renderer.getPixelRatio() },
+    },
+    vertexShader: /* glsl */`
+      attribute float size;
+      attribute float phase;
+      attribute vec3  aColor;
+
+      uniform float uTime;
+      uniform float uPixelRatio;
+
+      varying vec3  vColor;
+      varying float vAlpha;
+
+      void main() {
+        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+        vColor = aColor;
+        vAlpha = 0.35 + 0.55 * (0.5 + 0.5 * sin(uTime * 0.85 + phase));
+        gl_PointSize = size * uPixelRatio * (18.0 / -mvPosition.z);
+        gl_Position  = projectionMatrix * mvPosition;
+      }
+    `,
+    fragmentShader: /* glsl */`
+      varying vec3  vColor;
+      varying float vAlpha;
+      void main() {
+        vec2  uv = gl_PointCoord - 0.5;
+        float d2 = dot(uv, uv);
+        if (d2 > 0.25) discard;
+        float a = smoothstep(0.25, 0.0, d2);
+        gl_FragColor = vec4(vColor, a * vAlpha);
+      }
+    `,
+    transparent : true,
+    depthWrite  : false,
+    blending    : THREE.AdditiveBlending,
+  });
+
+  const pts = new THREE.Points(geo, mat);
+  scene.add(pts);
+  return pts;
+}
+
+/* ============================================================
+   8. 后期处理
+   ============================================================ */
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+
+const bloomPass = new UnrealBloomPass(
+  new THREE.Vector2(window.innerWidth, window.innerHeight),
+  0.45,   // strength —— 柔和
+  0.55,   // radius
+  0.78    // threshold —— 高，仅太阳触发
+);
+composer.addPass(bloomPass);
+composer.addPass(new OutputPass());
+
+/* ============================================================
+   9. 初始化
+   ============================================================ */
+let earth     = null;
+let starfield = null;
+let sunRef    = null;
+
+(async () => {
+  const landGeo = await loadLandGeoJSON();
+
+  if (!landGeo) {
+    console.error('[Earth] 无法加载陆地数据');
+    setProgress('陆地数据加载失败');
+    return;
+  }
+
+  setProgress('生成粒子…');
+  earth     = buildEarth(landGeo);
+  starfield = buildStarfield();
+  sunRef    = buildSun();
+
+  document.getElementById('status').textContent =
+    `Natural Earth 1:10m · ${earth.count.toLocaleString()} 颗粒子`;
+
+  const el = document.getElementById('loading');
+  el.classList.add('hide');
+  setTimeout(() => el.remove(), 1000);
+  document.getElementById('hint').classList.add('show');
+
+  console.log(
+    `%c✦ 真实粒子地球就绪 · ${earth.count.toLocaleString()} 颗粒子 · ` +
+    `陆地采样 ${earth.landCount.toLocaleString()} 点`,
+    'color:#4a9eff;font-size:13px;font-weight:600;'
+  );
+})();
+
+/* ============================================================
+   10. 主循环
+   ============================================================ */
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  const t = clock.getElapsedTime();
+  controls.update();
+
+  if (earth) {
+    earth.points.rotation.y = t * 0.05;
+  }
+
+  if (starfield) {
+    starfield.material.uniforms.uTime.value = t;
+    starfield.rotation.y = t * 0.004;
+  }
+
+  if (sunRef) {
+    const pulse = 1 + 0.035 * Math.sin(t * 1.1);
+    sunRef.glow.scale.set(80 * pulse, 80 * pulse, 1);
+  }
+
+  composer.render();
+}
+
+animate();
+
+/* ============================================================
+   11. 自适应
+   ============================================================ */
+window.addEventListener('resize', () => {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(w, h);
+
+  composer.setSize(w, h);
+  bloomPass.setSize(w, h);
+
+  const pr = renderer.getPixelRatio();
+  if (earth)     earth.mat.uniforms.uPixelRatio.value = pr;
+  if (starfield) starfield.material.uniforms.uPixelRatio.value = pr;
+});
 </script>
 </body>
 </html>
