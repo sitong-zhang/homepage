@@ -46,6 +46,18 @@
     min-height: 16px;
   }
 
+  #bar {
+    width: 220px; height: 3px; border-radius: 3px;
+    background: rgba(80, 150, 255, 0.14);
+    overflow: hidden;
+  }
+  #bar i {
+    display: block; height: 100%; width: 0%;
+    background: linear-gradient(90deg, #2f7dff, #7ec8ff);
+    border-radius: 3px;
+    transition: width 0.18s ease;
+  }
+
   #hint {
     position: fixed;
     bottom: 22px; left: 50%;
@@ -77,6 +89,7 @@
 <div id="loading">
   <div class="loader-ring"></div>
   <div>加载高精度陆地数据</div>
+  <div id="bar"><i></i></div>
   <div id="progress"></div>
 </div>
 
@@ -159,6 +172,13 @@ function setProgress(text) {
   progressEl.textContent = text;
 }
 
+function setBar(p) {
+  document.querySelector('#bar i').style.width =
+    Math.max(0, Math.min(100, p * 100)).toFixed(1) + '%';
+}
+const frame = () => new Promise(r => requestAnimationFrame(r));
+const LAND_BYTES = 3086715;   // land-10m.json 解压后字节数(分母)
+
 async function loadLandGeoJSON() {
   const URLS = [
     './vendor/land-10m.json',
@@ -166,13 +186,26 @@ async function loadLandGeoJSON() {
 
   for (const url of URLS) {
     try {
-      setProgress('下载 1:10m 陆地边界…');
+      setProgress('下载陆地数据…'); setBar(0.01);
       const res = await fetch(url);
       if (!res.ok) continue;
-      const topo = await res.json();
 
-      // TopoJSON → GeoJSON MultiPolygon
+      // 流式读取: 每收到一块数据就刷新一次进度条(实时)
+      const reader = res.body.getReader();
+      const chunks = []; let received = 0;
+      for (;;){
+        const {done, value} = await reader.read();
+        if (done) break;
+        chunks.push(value); received += value.length;
+        const p = Math.min(1, received / LAND_BYTES);
+        setBar(0.01 + 0.69 * p);
+        setProgress('下载陆地数据… ' + Math.round(p * 100) + '%');
+      }
+
+      setProgress('解析陆地数据…'); setBar(0.72); await frame();
+      const topo = JSON.parse(await new Blob(chunks).text());
       const land = topojson.feature(topo, topo.objects.land);
+      setBar(0.78);
       console.log('[Earth] ✓ Natural Earth 1:10m 陆地数据已加载');
       return land;
     } catch (e) {
@@ -297,7 +330,7 @@ function isLandAt(t, lon, lat){
 /* ============================================================
    5. 构建粒子地球
    ============================================================ */
-function buildEarth(landGeo) {
+async function buildEarth(landGeo) {
   const N = CFG.targetSamples;
   const R = CFG.radius;
 
@@ -317,9 +350,11 @@ function buildEarth(landGeo) {
   for (let i = 0; i < N; i++) {
     const [x, y, z] = fibSphere(i, N);
 
-    // 每隔一定数量更新进度
-    if (i % 8000 === 0) {
+    // 每 2 万点让出一次主线程: 进度条实时平滑刷新
+    if (i % 20000 === 0) {
       setProgress(`采样陆地粒子… ${Math.round(i / N * 100)}%`);
+      setBar(0.9 + 0.1 * (i / N));
+      await frame();
     }
 
     // 经纬度判定
@@ -566,8 +601,9 @@ let sunRef    = null;
     return;
   }
 
-  setProgress('光栅化陆地边界…');
-  earth     = buildEarth(landGeo);
+  setProgress('光栅化陆地边界…'); setBar(0.8); await frame();
+  earth     = await buildEarth(landGeo);
+  setBar(1);
   starfield = buildStarfield();
   sunRef    = buildSun();
 
