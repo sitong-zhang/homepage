@@ -26,37 +26,30 @@ header .sub{font-size:12px;color:var(--mut);margin-top:3px}
 .tab{flex:1;text-align:center;padding:11px 6px;border-radius:10px;font-size:14px;font-weight:600;color:var(--mut);cursor:pointer;transition:.2s;border:none;background:none}
 .tab.on{background:linear-gradient(135deg,rgba(245,197,66,.16),rgba(245,197,66,.06));color:var(--gold);box-shadow:inset 0 0 0 1px rgba(245,197,66,.35)}
 .view{display:none}.view.on{display:block}
-/* ===== APK 卡片 ===== */
-.apk{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:14px;
-  display:flex;gap:14px;align-items:flex-start}
-.apk .ic{width:56px;height:56px;border-radius:14px;flex:0 0 auto;background:linear-gradient(135deg,#1d4ed8,#7c3aed);
-  display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff}
+.apk{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin-bottom:14px;display:flex;gap:14px;align-items:flex-start}
+.apk .ic{width:56px;height:56px;border-radius:14px;flex:0 0 auto;background:linear-gradient(135deg,#1d4ed8,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff}
 .apk h3{font-size:16px;font-weight:700}
 .apk .meta{font-size:12px;color:var(--mut);margin:4px 0 8px}
 .apk .log{font-size:12.5px;color:var(--mut);line-height:1.6;background:rgba(255,255,255,.03);border-radius:8px;padding:8px 10px;margin-bottom:12px}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,#f5c542,#e8a920);
-  color:#1a1405;font-weight:700;font-size:14px;border:none;border-radius:10px;padding:11px 20px;cursor:pointer;text-decoration:none;transition:.15s}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,#f5c542,#e8a920);color:#1a1405;font-weight:700;font-size:14px;border:none;border-radius:10px;padding:11px 20px;cursor:pointer;text-decoration:none;transition:.15s}
 .btn:active{transform:scale(.97)}
 .btn.ghost{background:none;color:var(--gold);border:1px solid rgba(245,197,66,.5)}
-.empty{text-align:center;color:var(--mut);padding:50px 0;font-size:14px;line-height:1.9}
-/* ===== 上传区 ===== */
-.acct{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);
-  border-radius:12px;padding:11px 14px;margin-bottom:14px;font-size:13px}
+.empty{text-align:center;color:var(--mut);padding:38px 0;font-size:13.5px;line-height:1.9}
+.acct{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 14px;margin-bottom:14px;font-size:13px}
 .acct .who{flex:1;color:var(--mut);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .acct .who b{color:var(--gold)}
-.acct a{color:var(--gold);text-decoration:none;font-weight:600;font-size:12.5px;flex:0 0 auto;cursor:pointer}
-.hint{font-size:12px;color:var(--mut);line-height:1.8;background:rgba(245,197,66,.06);
-  border:1px solid rgba(245,197,66,.25);border-radius:12px;padding:11px 14px;margin-bottom:14px}
+.acct a{color:var(--gold);text-decoration:none;font-weight:600;font-size:12.5px;flex:0 0 auto;cursor:pointer;margin-left:10px}
+.hint{font-size:12px;color:var(--mut);line-height:1.8;background:rgba(245,197,66,.06);border:1px solid rgba(245,197,66,.25);border-radius:12px;padding:11px 14px;margin-bottom:14px}
 .hint b{color:var(--gold2)}
-.drop{border:2px dashed rgba(245,197,66,.45);border-radius:16px;background:rgba(245,197,66,.04);
-  padding:36px 18px;text-align:center;cursor:pointer;transition:.2s}
+.drop{border:2px dashed rgba(245,197,66,.45);border-radius:16px;background:rgba(245,197,66,.04);padding:36px 18px;text-align:center;cursor:pointer;transition:.2s}
 .drop.on{background:rgba(245,197,66,.1);border-color:var(--gold)}
 .drop .big{font-size:34px;margin-bottom:10px}
 .drop p{font-size:14.5px;font-weight:600}
 .drop span{font-size:12px;color:var(--mut);display:block;margin-top:8px;line-height:1.7}
-.mode{display:flex;gap:8px;margin:14px 0}
-.mode button{flex:1;background:var(--card);border:1px solid var(--line);color:var(--mut);border-radius:10px;padding:10px;font-size:13px;cursor:pointer}
-.mode button.on{color:var(--gold);border-color:rgba(245,197,66,.5);background:rgba(245,197,66,.08)}
+.sechead{display:flex;align-items:center;gap:8px;margin:20px 0 12px}
+.sechead h2{font-size:14.5px;font-weight:700}
+.sechead .tag{font-size:10.5px;color:var(--mut);border:1px solid var(--line);border-radius:20px;padding:2px 8px}
+.sechead a{margin-left:auto;color:var(--gold);font-size:12px;cursor:pointer;text-decoration:none}
 .item{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
 .item .top{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}
 .item .nm{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -66,8 +59,7 @@ header .sub{font-size:12px;color:var(--mut);margin-top:3px}
 .st{font-size:12px;color:var(--mut)}
 .st.ok{color:var(--ok)} .st.err{color:var(--err);line-height:1.8}
 .linkrow{display:flex;gap:8px;margin-top:10px}
-.linkrow input{flex:1;background:#0a1428;border:1px solid var(--line);border-radius:9px;color:var(--gold2);
-  font-size:12.5px;padding:10px 12px;outline:none;text-overflow:ellipsis;min-width:0}
+.linkrow input{flex:1;background:#0a1428;border:1px solid var(--line);border-radius:9px;color:var(--gold2);font-size:12.5px;padding:10px 12px;outline:none;text-overflow:ellipsis;min-width:0}
 .mini{background:var(--card2);border:1px solid var(--line);color:var(--txt);border-radius:9px;padding:10px 14px;font-size:12.5px;cursor:pointer;flex:0 0 auto;text-decoration:none;display:flex;align-items:center}
 .mini.del{color:var(--err)}
 .note{font-size:11.5px;color:var(--mut);line-height:1.8;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:18px}
@@ -76,14 +68,11 @@ footer{text-align:center;color:#5c6f9c;font-size:11.5px;padding:26px 0 10px;line
 .modal.on{display:flex}
 .mcard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;width:100%;max-width:360px}
 .mcard h3{font-size:16px;margin-bottom:14px}
-.mcard input{width:100%;padding:12px 14px;background:#0a1428;border:1px solid var(--line);border-radius:10px;
-  color:var(--txt);font-size:14px;outline:none;margin-bottom:12px}
+.mcard input{width:100%;padding:12px 14px;background:#0a1428;border:1px solid var(--line);border-radius:10px;color:var(--txt);font-size:14px;outline:none;margin-bottom:12px}
 .mcard input:focus{border-color:var(--gold)}
-.mrow{display:flex;gap:8px}
-.mrow .btn{flex:1}
+.mrow{display:flex;gap:8px}.mrow .btn{flex:1}
 .merr{color:var(--err);font-size:12px;min-height:16px;margin-bottom:8px}
-.toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(20px);background:#1c2b52;color:var(--txt);
-  border:1px solid var(--line);padding:10px 20px;border-radius:12px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;z-index:30;max-width:86vw}
+.toast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(20px);background:#1c2b52;color:var(--txt);border:1px solid var(--line);padding:10px 20px;border-radius:12px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;z-index:30;max-width:86vw}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 </head>
@@ -110,7 +99,8 @@ footer{text-align:center;color:#5c6f9c;font-size:11.5px;padding:26px 0 10px;line
   <div class="view" id="v2">
     <div class="acct" id="acctbar"></div>
     <div class="hint">
-      💡 <b>创建账户</b>后可以托管多个 APP 及文件；<b>未创建账户</b>时只能保存最近上传的 1 个文件——下次再打开本站，看到的就是它。
+      💡 <b>未创建账户</b>：上传的文件进入<b>公开区</b>，所有访问本站的人都能看到、下载（保存 6 天）。<br>
+      💡 <b>创建账户并登录</b>后：文件长期保存，且<b>只有你自己能看到</b>。每个文件都可随时删除。
     </div>
     <div class="drop" id="drop" onclick="document.getElementById('fp').click()">
       <div class="big">⬆️</div>
@@ -118,15 +108,17 @@ footer{text-align:center;color:#5c6f9c;font-size:11.5px;padding:26px 0 10px;line
       <span>支持多选 · 手机 / 电脑均可 · 无需注册任何账号</span>
     </div>
     <input type="file" id="fp" multiple style="display:none">
-    <div class="mode">
-      <button id="m0" class="on" onclick="setMode(0)">自动（推荐）</button>
-      <button id="m1" onclick="setMode(1)">长期（gofile）</button>
-      <button id="m2" onclick="setMode(2)">6 天（filebin）</button>
+
+    <div class="sechead"><h2>🌍 公开区</h2><span class="tag">所有人可见 · 6天</span><a onclick="loadPublic()">刷新</a></div>
+    <div id="publist"></div>
+
+    <div id="privsec" style="display:none">
+      <div class="sechead"><h2>🔒 我的私密区</h2><span class="tag">仅自己可见 · 长期</span></div>
+      <div id="privlist"></div>
     </div>
-    <div id="list"></div>
+
     <div class="note">
-      📌 文件由页面直传第三方免费匿名存储（gofile.io / filebin.net），本站不保存文件、不注册、不收费。
-      gofile 长期无人访问可能被平台清理，filebin 6 天后自动删除。
+      📌 公开区文件由页面直传第三方免费匿名存储（filebin.net），6 天后平台自动删除；私密区走 gofile.io 长期保存、记录仅存于你的设备。
       若上传失败多为当前网络无法直连存储节点：请切换 WiFi / 流量重试，或把文件发给站长由其上传到本站。
     </div>
   </div>
@@ -134,7 +126,6 @@ footer{text-align:center;color:#5c6f9c;font-size:11.5px;padding:26px 0 10px;line
   <footer>免注册 · 免费 · ⚠️ 请勿上传违法违规内容</footer>
 </div>
 
-<!-- 账户弹窗 -->
 <div class="modal" id="modal">
   <div class="mcard">
     <h3 id="mtitle">创建账户</h3>
@@ -150,17 +141,19 @@ footer{text-align:center;color:#5c6f9c;font-size:11.5px;padding:26px 0 10px;line
 
 <div class="toast" id="toast"></div>
 <script>
-/* =============== Tabs =============== */
+/* ================= 基础 ================= */
 function sw(n){
   for(let i=1;i<=2;i++){
     document.getElementById('t'+i).classList.toggle('on',i===n);
     document.getElementById('v'+i).classList.toggle('on',i===n);
   }
+  if(n===2)loadPublic();
 }
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2000)}
-function fmt(b){if(!b&&b!==0)return'';const u=['B','KB','MB','GB'];let i=0;while(b>=1024&&i<3){b/=1024;i++}return b.toFixed(b<10&&i>0?1:0)+' '+u[i]}
+function fmt(b){if(b==null)return'';const u=['B','KB','MB','GB'];let i=0;while(b>=1024&&i<3){b/=1024;i++}return b.toFixed(b<10&&i>0?1:0)+' '+u[i]}
+const PUB_BIN='zjt-pub-9k2m';
 
-/* =============== APK 区 =============== */
+/* ================= APK 区 ================= */
 const ICONS=['🎮','🗺️','📱','🛠️','🔓','🧰','🤖','📷'];
 async function loadApps(){
   const box=document.getElementById('apklist');
@@ -183,24 +176,19 @@ async function loadApps(){
 }
 loadApps();
 
-/* =============== 本地账户 =============== */
+/* ================= 本地账户 ================= */
 let ACCT=null;
 try{ACCT=JSON.parse(localStorage.getItem('zjt_acct')||'null')}catch(e){}
-function getRecs(){try{return JSON.parse(localStorage.getItem('zjt_files')||'[]')}catch(e){return[]}}
-function setRecs(a){
-  const keep=ACCT?a:a.slice(-1);          /* 未登录只保留最近1条 */
-  localStorage.setItem('zjt_files',JSON.stringify(keep));return keep;
-}
+function privRecs(){try{return JSON.parse(localStorage.getItem('zjt_files')||'[]')}catch(e){return[]}}
+function savePriv(a){localStorage.setItem('zjt_files',JSON.stringify(a))}
 function renderAcct(){
   const b=document.getElementById('acctbar');
-  if(ACCT){
-    b.innerHTML=`<div class="who">👤 账户：<b>${ACCT.n}</b> · 多文件托管中</div><a onclick="logout()">退出</a>`;
-  }else{
-    const n=getRecs().length;
-    b.innerHTML=`<div class="who">👤 未创建账户（仅保留最近 1 个文件）</div><a onclick="mOpen('reg')">创建账户</a><a onclick="mOpen('login')">登录</a>`;
-  }
+  if(ACCT){b.innerHTML=`<div class="who">👤 <b>${ACCT.n}</b> · 已登录，上传的文件仅自己可见</div><a onclick="logout()">退出</a>`}
+  else{b.innerHTML=`<div class="who">👤 未创建账户 · 上传的文件<b style="color:var(--gold)">所有人可见</b></div><a onclick="mOpen('reg')">创建账户</a><a onclick="mOpen('login')">登录</a>`}
+  document.getElementById('privsec').style.display=ACCT?'block':'none';
+  renderPriv();
 }
-function logout(){localStorage.removeItem('zjt_acct');ACCT=null;setRecs(getRecs());renderAcct();renderHistory();toast('已退出（本地记录仅保留最近 1 条）')}
+function logout(){localStorage.removeItem('zjt_acct');ACCT=null;renderAcct();toast('已退出，之后上传的文件将公开可见')}
 function mOpen(kind){
   document.getElementById('modal').classList.add('on');
   document.getElementById('merr').textContent='';
@@ -216,40 +204,90 @@ function mOk(){
   const er=document.getElementById('merr');
   if(!n||!p){er.textContent='昵称和密码不能为空';return}
   if(k==='reg'){
-    localStorage.setItem('zjt_acct',JSON.stringify({n,p}));
-    ACCT={n,p};setRecs(getRecs());renderAcct();mClose();toast('账户已创建（保存在本机浏览器）');
+    ACCT={n,p};localStorage.setItem('zjt_acct',JSON.stringify(ACCT));
+    renderAcct();mClose();toast('账户已创建（仅保存在本机浏览器）');
   }else{
     const a=(()=>{try{return JSON.parse(localStorage.getItem('zjt_acct')||'null')}catch(e){return null}})();
     if(a&&a.n===n&&a.p===p){ACCT=a;renderAcct();mClose();toast('登录成功')}
-    else er.textContent='账户不存在或密码错误（本机保存的账户）';
+    else er.textContent='账户不存在或密码错误（账户仅保存在本机浏览器）';
   }
 }
 renderAcct();
 
-/* =============== 历史记录 =============== */
-function renderHistory(){
-  const box=document.getElementById('list');
-  const recs=getRecs();
+/* ================= 私密区 ================= */
+function renderPriv(){
+  const box=document.getElementById('privlist');
+  const recs=privRecs();
+  if(!ACCT){box.innerHTML='';return}
+  if(!recs.length){box.innerHTML='<div class="empty">暂无私密文件<br>登录后上传的文件会出现在这里（长期保存）</div>';return}
   box.innerHTML='';
   recs.forEach(r=>{
     const d=document.createElement('div');d.className='item';
     d.innerHTML=`<div class="top"><div class="nm">${r.n}</div><div class="sz">${fmt(r.s)}</div></div>
-      <div class="st ok">✅ ${r.t==='g'?'长期托管（gofile）':'短期 6 天（filebin）'} · ${r.d}</div>
+      <div class="st ok">✅ ${r.t==='g'?'长期保存':'6天有效'} · ${r.d}</div>
       <div class="linkrow"><input readonly value="${r.u}" onclick="this.select()">
       <button class="mini" onclick="cp(this)">复制</button>
       <a class="mini" href="${r.u}" target="_blank" rel="noopener">打开</a>
-      <button class="mini del" onclick="delRec(this,'${r.u}')">删除</button></div>`;
+      <button class="mini del" onclick="delPriv(this)">删除</button></div>`;
+    d.dataset.rec=JSON.stringify(r);
     box.appendChild(d);
   });
 }
-function delRec(btn,url){
-  setRecs(getRecs().filter(r=>r.u!==url));renderHistory();toast('已从本机记录中移除（文件仍在原平台）');
+async function delPriv(btn){
+  const el=btn.closest('.item');const r=JSON.parse(el.dataset.rec);
+  btn.textContent='删除中…';btn.disabled=true;
+  await platformDelete(r);                      /* 尽力删平台文件 */
+  savePriv(privRecs().filter(x=>x.u!==r.u));
+  renderPriv();toast('已删除');
 }
-renderHistory();
+async function platformDelete(r){
+  try{
+    if(r.t==='f'){                              /* filebin 真删除 */
+      await fetch(r.del,{method:'DELETE'});
+    }else if(r.t==='g'&&r.tk&&r.cid&&r.sv){     /* gofile guest 删除 */
+      await fetch(`https://${r.sv}.gofile.io/contents/${r.cid}`,{method:'DELETE',headers:{'Authorization':'Bearer '+r.tk}});
+    }
+  }catch(e){}
+}
 
-/* =============== 上传 =============== */
-let MODE=0;
-function setMode(m){MODE=m;for(let i=0;i<3;i++)document.getElementById('m'+i).classList.toggle('on',i===m)}
+/* ================= 公开区 ================= */
+let PUB=[];
+async function loadPublic(){
+  const box=document.getElementById('publist');
+  box.innerHTML='<div class="st" style="padding:8px 2px">加载中…</div>';
+  try{
+    const r=await fetch(`https://filebin.net/${PUB_BIN}`,{headers:{'Accept':'application/json'},cache:'no-store'});
+    if(r.status===404){PUB=[];renderPub();return}
+    if(!r.ok)throw 0;
+    const d=await r.json();
+    PUB=(d.files||[]).map(f=>({n:f.filename,s:f.bytes,u:`https://filebin.net/${PUB_BIN}/${encodeURIComponent(f.filename)}`,d:(f.uploaded_at||'').replace('T',' ').slice(0,16)}));
+    renderPub();
+  }catch(e){box.innerHTML='<div class="st err" style="padding:8px 2px">公开区加载失败（网络无法直连存储节点），点右上角"刷新"重试</div>'}
+}
+function renderPub(){
+  const box=document.getElementById('publist');
+  if(!PUB.length){box.innerHTML='<div class="empty">暂无公开文件<br>未登录时上传的文件会出现在这里，所有人可见</div>';return}
+  box.innerHTML='';
+  PUB.forEach(f=>{
+    const d=document.createElement('div');d.className='item';
+    d.innerHTML=`<div class="top"><div class="nm">${f.n}</div><div class="sz">${fmt(f.s)}</div></div>
+      <div class="st ok">🌍 公开可见${f.d?' · '+f.d:''}</div>
+      <div class="linkrow"><input readonly value="${f.u}" onclick="this.select()">
+      <button class="mini" onclick="cp(this)">复制</button>
+      <a class="mini" href="${f.u}" target="_blank" rel="noopener">下载</a>
+      <button class="mini del" onclick="delPub(this)">删除</button></div>`;
+    d.dataset.fn=f.n;
+    box.appendChild(d);
+  });
+}
+async function delPub(btn){
+  const el=btn.closest('.item');const fn=el.dataset.fn;
+  btn.textContent='删除中…';btn.disabled=true;
+  try{await fetch(`https://filebin.net/${PUB_BIN}/${encodeURIComponent(fn)}`,{method:'DELETE'})}catch(e){}
+  PUB=PUB.filter(x=>x.n!==fn);renderPub();toast('已删除（公开区立即移除）');
+}
+
+/* ================= 上传 ================= */
 const drop=document.getElementById('drop');
 ['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('on')}));
 ['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('on')}));
@@ -260,41 +298,70 @@ function addCard(f){
   const d=document.createElement('div');d.className='item';
   d.innerHTML=`<div class="top"><div class="nm">${f.name}</div><div class="sz">${fmt(f.size)}</div></div>
     <div class="bar"><i></i></div><div class="st">排队中…</div>`;
-  document.getElementById('list').prepend(d);
+  document.getElementById('publist').prepend(d);
   return {el:d,bar:d.querySelector('.bar i'),st:d.querySelector('.st')};
 }
-function saveRec(f,u,t){setRecs([{n:f.name,s:f.size,u,t,d:new Date().toLocaleString('zh-CN',{hour12:false})},...getRecs()])}
-function failMsg(c){c.st.className='st err';
-  c.st.innerHTML='❌ 连接存储节点失败（当前网络可能无法直连境外节点）。<br>建议：① 切换 WiFi / 流量后重试　② 换「长期/6天」另一模式　③ 或把文件发给站长，由站长上传到本站。';}
-
+function addCardPriv(f){
+  const d=document.createElement('div');d.className='item';
+  d.innerHTML=`<div class="top"><div class="nm">${f.name}</div><div class="sz">${fmt(f.size)}</div></div>
+    <div class="bar"><i></i></div><div class="st">排队中…</div>`;
+  document.getElementById('privlist').prepend(d);
+  return {el:d,bar:d.querySelector('.bar i'),st:d.querySelector('.st')};
+}
 async function handle(files){
-  for(const f of files){
-    const c=addCard(f);
-    try{
-      if(MODE===0){                      /* 自动：gofile -> filebin */
-        try{await upGofile(f,c)}catch(e1){c.bar.style.width='0%';c.st.className='st';c.st.textContent='自动切换到 6 天通道…';await upFilebin(f,c,'g')}
-      }else if(MODE===1){await upGofile(f,c)}
-      else{await upFilebin(f,c,'f')}
-    }catch(e){failMsg(c)}
+  for(const f of files){ if(ACCT)await upPrivate(f); else await upPublic(f); }
+}
+function failMsg(c){
+  c.st.className='st err';
+  c.st.innerHTML='❌ 连接存储节点失败（当前网络可能无法直连）。<br>建议：① 切换 WiFi / 流量重试　② 稍后再试　③ 或把文件发给站长上传。';
+}
+/* —— 公开上传（filebin 固定bin）—— */
+function upPublic(f){
+  const c=addCard(f);c.st.textContent='上传中…';
+  return new Promise(resolve=>{
+    const bin=Math.random().toString(36).slice(2,6);
+    const send=fn=>new Promise((res,rej)=>{
+      const x=new XMLHttpRequest();
+      x.open('POST',`https://filebin.net/${PUB_BIN}/${encodeURIComponent(fn)}`);
+      x.timeout=120000;
+      x.upload.onprogress=e=>{if(e.lengthComputable)c.bar.style.width=(e.loaded/e.total*100)+'%'};
+      x.onload=()=>res(x);x.ontimeout=()=>rej(0);x.onerror=()=>rej(0);
+      x.send(f);
+    });
+    (async()=>{
+      try{
+        let x=await send(f.name);
+        if(x.status>=400){x=await send(f.name.replace(/(\.[^.]+)?$/,m=>'_'+bin+(m||'')))}
+        if(x.status>=200&&x.status<300){
+          c.bar.style.width='100%';c.st.className='st ok';c.st.textContent='✅ 上传成功 · 公开区（6天）';
+          const u=`https://filebin.net/${PUB_BIN}/${encodeURIComponent(f.name)}`;
+          c.el.insertAdjacentHTML('beforeend',`<div class="linkrow"><input readonly value="${u}" onclick="this.select()"><button class="mini" onclick="cp(this)">复制</button><a class="mini" href="${u}" target="_blank" rel="noopener">下载</a><button class="mini del" onclick="delPub(this)">删除</button></div>`);
+          c.el.dataset.fn=f.name;loadPublic();
+        }else{c.st.className='st err';c.st.textContent='❌ 上传失败 ('+x.status+')'}
+      }catch(e){failMsg(c)}
+      resolve();
+    })();
+  });
+}
+/* —— 私密上传（gofile 长期 -> filebin 降级）—— */
+async function upPrivate(f){
+  const c=addCardPriv(f);c.st.textContent='获取上传节点…';
+  try{
+    const r=await fetch('https://api.gofile.io/servers',{cache:'no-store'});
+    if(!r.ok)throw 0;
+    const d=await r.json();const s=d.data.servers[0].name;
+    const j=await xupload(`https://${s}.gofile.io/contents/uploadfile`,f,c);
+    if(j&&j.status==='ok'&&j.data&&j.data.downloadPage){
+      c.bar.style.width='100%';c.st.className='st ok';c.st.textContent='✅ 上传成功 · 长期保存（仅自己可见）';
+      c.el.insertAdjacentHTML('beforeend',linkRow(j.data.downloadPage));
+      savePriv([{n:f.name,s:f.size,u:j.data.downloadPage,t:'g',tk:j.data.guestToken||'',cid:j.data.id||'',sv:s,d:new Date().toLocaleString('zh-CN',{hour12:false})},...privRecs()]);
+    }else throw 0;
+  }catch(e1){
+    c.bar.style.width='0%';c.st.className='st';c.st.textContent='gofile 通道不通，切换备用通道…';
+    try{await upFilebinPriv(f,c)}catch(e2){failMsg(c)}
   }
 }
-function upGofile(f,c){
-  c.st.textContent='获取上传节点…';
-  return fetch('https://api.gofile.io/servers',{cache:'no-store'})
-    .then(r=>{if(!r.ok)throw 0;return r.json()})
-    .then(d=>{
-      const s=d.data.servers[0].name;
-      return xupload(`https://${s}.gofile.io/contents/uploadfile`,f,c,'file',120000);
-    }).then(j=>{
-      if(j&&j.status==='ok'&&j.data&&j.data.downloadPage){
-        const u=j.data.downloadPage;c.bar.style.width='100%';
-        c.st.className='st ok';c.st.textContent='✅ 上传成功（长期）';
-        c.el.insertAdjacentHTML('beforeend',linkRow(u));
-        saveRec(f,u,'g');
-      }else throw 0;
-    });
-}
-function upFilebin(f,c){
+function upFilebinPriv(f,c){
   c.st.textContent='上传中…';
   return new Promise((res,rej)=>{
     const bin=Math.random().toString(36).slice(2,10);
@@ -304,21 +371,21 @@ function upFilebin(f,c){
     x.onload=()=>{
       if(x.status>=200&&x.status<300){
         const u=`https://filebin.net/${bin}`;
-        c.bar.style.width='100%';c.st.className='st ok';c.st.textContent='✅ 上传成功（6 天有效）';
-        c.el.insertAdjacentHTML('beforeend',linkRow(u));saveRec(f,u,'f');res();
+        c.bar.style.width='100%';c.st.className='st ok';c.st.textContent='✅ 上传成功 · 6天有效（备用通道）';
+        c.el.insertAdjacentHTML('beforeend',linkRow(u));
+        savePriv([{n:f.name,s:f.size,u,t:'f',del:url,d:new Date().toLocaleString('zh-CN',{hour12:false})},...privRecs()]);res();
       }else rej(0);
     };
-    x.ontimeout=()=>rej(0);x.onerror=()=>rej(0);
-    x.send(f);
+    x.ontimeout=()=>rej(0);x.onerror=()=>rej(0);x.send(f);
   });
 }
-function xupload(url,f,c,field,timeout){
+function xupload(url,f,c){
   return new Promise((res,rej)=>{
-    const x=new XMLHttpRequest();x.open('POST',url);x.timeout=timeout;
+    const x=new XMLHttpRequest();x.open('POST',url);x.timeout=120000;
     x.upload.onprogress=e=>{if(e.lengthComputable)c.bar.style.width=(e.loaded/e.total*90)+'%'};
     x.onload=()=>{try{res(JSON.parse(x.responseText))}catch(e){rej(e)}};
     x.ontimeout=()=>rej(0);x.onerror=()=>rej(0);
-    const fd=new FormData();fd.append(field,f);x.send(fd);
+    const fd=new FormData();fd.append('file',f);x.send(fd);
   });
 }
 function linkRow(u){
