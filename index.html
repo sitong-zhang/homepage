@@ -113,7 +113,7 @@
 <div id="ring"></div>
 <div id="cities"></div>
 
-<div id="hint">拖动旋转 · 滚轮缩放 · 点右下角 ✋ 开启手势控制</div>
+<div id="hint">隔空手势控制已开启 · 伸出手掌移动旋转 · 滚轮缩放</div>
 
 <!-- 手势控制面板：摄像头 + 状态提示 + 开关 -->
 <button id="hand-open" title="开启手势控制">✋</button>
@@ -839,6 +839,10 @@ function buildStarfield() {
   setTimeout(() => el.remove(), 1000);
   $('hint').classList.add('show');
   setTimeout(() => $('hint').classList.add('gone'), 7000);
+  /* 手势默认开启：加载完成即自动启动摄像头手势交互。
+     若浏览器要求用户手势（如 iOS Safari），自动启动被拦截时
+     ✋ 按钮会重新显示，点击即可手动开启。 */
+  setTimeout(enableHands, 600);
 })();
 
 /* ── 悬浮蓝圈：固定在屏幕中心，地球涨到碰到它时淡出 ─────────── */
@@ -1065,8 +1069,15 @@ async function enableHands() {
     handStatusSet('✋ 伸出<strong>手掌</strong>开始控制');
   } catch (e) {
     console.warn('[Hands] 手势启动失败', e);
-    handStatusSet('手势启动失败：' + (e && e.message ? e.message : e), 'warn');
+    /* 手机浏览器常见：摄像头需用户手势触发（iOS Safari / 部分安卓）。
+       自动启动被拦截时恢复 ✋ 按钮，提示用户点击开启。 */
+    const msg = e && e.message ? e.message : String(e);
+    const isPerm = /denied|permission|NotAllowed|not allowed/i.test(msg);
+    handStatusSet(isPerm
+      ? '需授权摄像头：请点下方 ✋ 按钮开启'
+      : '手势启动失败：' + msg, 'warn');
     handOn = false;
+    handOpen.classList.remove('off');
   }
 }
 function disableHands() {
