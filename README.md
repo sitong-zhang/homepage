@@ -2,7 +2,7 @@
 
 一个纯前端、零外链的 **Three.js 3D 粒子视觉系统**。星球由数万颗圆形粒子构成，陆地轮廓来自 **Natural Earth 1:10m** 真实地理数据（world-atlas TopoJSON），不是程序噪声。
 
-线上地址：<https://111qqq333www444.github.io/website/>
+线上地址：<https://111qqq333www444.github.io/homepage/>
 
 打开方式：必须通过 HTTP/HTTPS（直接双击 `file://` 会被 CORS 拦住本地数据）
 
