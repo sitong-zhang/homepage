@@ -420,6 +420,12 @@ const VERT = `
     /* 手形时混入暖白辉光，强化切换感 */
     vec3 handC = vec3(0.98, 0.90, 0.80) + vec3(0.0, 0.02, 0.10) * aT;
     tint = mix(tint, handC, uMorph * 0.55);
+    /* 陆地粒子(白色, aColor 三个分量接近相等且高亮)保持纯白不被夜蓝染色：
+       当 aColor 是白色(亮度>0.8 且近似无色)时，tint 直接用 1.0 —— 白色陆地始终可见 */
+    float lum = max(aColor.r, max(aColor.g, aColor.b));
+    float chroma = max(abs(aColor.r - aColor.g), max(abs(aColor.g - aColor.b), abs(aColor.b - aColor.r)));
+    float isWhiteLand = step(0.8, lum) * step(0.02, 1.0 - chroma);
+    tint = mix(tint, vec3(1.0), isWhiteLand);
     vColor = aColor * tint;
     /* 手形时粒子大幅放大：手更致密饱满、无骨架空隙（地球时保持原尺寸） */
     float handBoost = 1.0 + uMorph * 2.2;
@@ -629,8 +635,8 @@ async function buildSurface(N) {
 
     const c = isLand ? landColor() : oceanColor();
     col.push(c.r, c.g, c.b);
-    /* 陆地：大小一致的蓝色小点；海洋：较小且略随机 */
-    siz.push(isLand ? 0.50 : 0.28 + Math.random() * 0.14);
+    /* 陆地：白色大点，清晰可见；海洋：较小的蓝色点 */
+    siz.push(isLand ? 1.20 : 0.42 + Math.random() * 0.18);
 
     /* 手形骨骼归属：随机分配到某根骨骼段，生成采样参数。
        掌心段(21)：半径均匀分布（shader 里 sqrt 面积补偿）→ 掌面均匀铺满
@@ -1101,6 +1107,11 @@ function updateGestBubble(gesture, conf) {
    - 锚点跟随手在画面中的位置移动（等级2：轻微平移跟随） */
 function updateHandJoints(lm) {
   const J = surfMat.uniforms.uJoints.value;
+  /* NaN 防护：任一关键点含 NaN/Infinity 就跳过本帧，避免手形坐标 NaN 导致整个球消失 */
+  for (let i = 0; i < 21; i++) {
+    const p = lm[i];
+    if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y) || !Number.isFinite(p.z)) return false;
+  }
   /* 手掌中心锚点（跟随手移动） */
   let ax = 0, ay = 0, az = 0;
   for (const i of [0, 5, 9, 13, 17]) { ax += lm[i].x; ay += lm[i].y; az += lm[i].z; }
@@ -1117,7 +1128,8 @@ function updateHandJoints(lm) {
     const p = lm[i];
     const x = (p.x - ax) * S;
     const y = (ay - p.y) * S;         // 翻转 MediaPipe 的 y 向下 → 世界 y 向上
-    const z = (az - p.z) * S * HAND_Z_SCALE;
+    /* z 方向只做轻微前后层次（clamp 防止 MediaPipe 深度异常被 S 放大后粒子飞散出屏） */
+    const z = THREE.MathUtils.clamp((az - p.z) * S * HAND_Z_SCALE, -0.85, 0.85);
     J[i].set(x, y, z);
   }
 
@@ -1126,7 +1138,8 @@ function updateHandJoints(lm) {
   let px = 0, py = 0, pz = 0;
   for (const i of [5, 9, 13, 17]) { px += lm[i].x; py += lm[i].y; pz += lm[i].z; }
   px /= 4; py /= 4; pz /= 4;
-  const pcx = (px - ax) * S, pcy = (ay - py) * S, pcz = (pz - az) * S * HAND_Z_SCALE;
+  const pcx = (px - ax) * S, pcy = (ay - py) * S;
+  const pcz = THREE.MathUtils.clamp((pz - az) * S * HAND_Z_SCALE, -0.85, 0.85);
   J[21].set(
     pcx + (J[0].x - pcx) * 0.18,
     pcy + (J[0].y - pcy) * 0.18,
@@ -1139,12 +1152,14 @@ function updateHandJoints(lm) {
   const uPalmW = surfMat.uniforms.uPalmW.value;
 
   /* U：腕→中指根 方向（手掌长度方向） */
-  let ux = (lm[9].x - lm[0].x) * S, uy = (lm[0].y - lm[9].y) * S, uz = (lm[9].z - lm[0].z) * S * HAND_Z_SCALE;
+  let ux = (lm[9].x - lm[0].x) * S, uy = (lm[0].y - lm[9].y) * S, uz = (az - lm[9].z) * S * HAND_Z_SCALE;
+  uz = THREE.MathUtils.clamp(uz, -0.85, 0.85);
   const uLen = Math.max(0.01, Math.hypot(ux, uy, uz));
   ux /= uLen; uy /= uLen; uz /= uLen;
 
   /* V：小指根(17) → 食指根(5) 方向（手掌宽度方向） */
-  let vx = (lm[5].x - lm[17].x) * S, vy = (lm[17].y - lm[5].y) * S, vz = (lm[5].z - lm[17].z) * S * HAND_Z_SCALE;
+  let vx = (lm[5].x - lm[17].x) * S, vy = (lm[17].y - lm[5].y) * S, vz = (az - lm[5].z) * S * HAND_Z_SCALE;
+  vz = THREE.MathUtils.clamp(vz, -0.85, 0.85);
   const vLen = Math.max(0.01, Math.hypot(vx, vy, vz));
   vx /= vLen; vy /= vLen; vz /= vLen;
 
@@ -1152,9 +1167,11 @@ function updateHandJoints(lm) {
   let wnx = uy * vz - uz * vy, wny = uz * vx - ux * vz, wnz = ux * vy - uy * vx;
   const wnLen = Math.max(0.001, Math.hypot(wnx, wny, wnz));
   wnx /= wnLen; wny /= wnLen; wnz /= wnLen;
-  const halfThick = vLen * 0.22 + 0.12;   // 掌心厚度：约宽度的22% + 基础
+  /* 掌心厚度固定小值（不随 S 爆大），约 0.5 世界单位，只做轻微鼓丘 */
+  const halfThick = 0.25;
 
   uPalmW.set(wnx * halfThick, wny * halfThick, wnz * halfThick);
+  return true;
 }
 /* 是否触发地球变形：任意识别到的手势都触发（张掌/握拳/比耶/点赞/食指/拇指向下/我爱你…）
    仅当手完全离开（onGestureResult 里 !lm 分支）才流回地球 */
@@ -1182,8 +1199,14 @@ function onGestureResult(res) {
   setGestStatus(label.name + ' ' + conf.toFixed(0) + '%', 'ok');
   updateGestBubble(handGesture, g ? g.score : 0);
 
-  /* 实时更新手形关节坐标（所有手势都更新，保证手形实时跟手） */
-  updateHandJoints(lm);
+  /* 实时更新手形关节坐标（所有手势都更新，保证手形实时跟手）。
+     返回 false 表示本帧数据无效（uJoints 未更新），此时不触发变形，
+     避免粒子飞向全 0 原点导致球塌缩消失 */
+  const ok = updateHandJoints(lm);
+  if (!ok) {
+    updateGestBubble('none', 0);
+    return;
+  }
 
   /* 有手 → 地球溶解成手形（任意手势） */
   morphTarget = 1;
