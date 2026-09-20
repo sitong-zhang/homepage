@@ -39,28 +39,15 @@
   #retry.on { display: inline-block; }
   #retry:active { transform: scale(.96); }
 
-  .panel { position: fixed; z-index: 20; border: 1px solid rgba(120,170,230,.16); border-radius: 13px;
-    background: rgba(8,14,26,.58); backdrop-filter: blur(12px); box-shadow: 0 12px 36px rgba(0,0,0,.45); }
-  #hud { left: 16px; bottom: 16px; padding: 11px 13px; min-width: 190px; font-size: 11.5px; color: #8ea0c4; }
-  #hud h4 { margin: 0 0 7px; font-size: 11.5px; color: #dce9ff; font-weight: 600; letter-spacing: .12em; }
-  #hud .k { display: flex; justify-content: space-between; gap: 16px; line-height: 1.85; }
-  #hud .k b { color: #e8eefc; font-weight: 500; font-variant-numeric: tabular-nums; }
-
-  /* 悬浮蓝圈：固定在屏幕正中，不随相机旋转/缩放移动；地球触到它时淡出 */
+  /* 悬浮蓝圈：固定在屏幕正中，不随相机旋转/缩放移动；地球触到它时淡出。
+     加粗：粗圆环 + 内外双层光晕，去掉细内环与中心圆点 */
   #ring { position: fixed; left: 50%; top: 50%; z-index: 15; pointer-events: none;
     border-radius: 50%; transform: translate(-50%, -50%);
-    border: 1px solid rgba(96,172,255,.40);
-    box-shadow: 0 0 26px rgba(60,150,255,.16), inset 0 0 26px rgba(60,150,255,.09);
+    border: 5px solid rgba(96,172,255,.72);
+    box-shadow: 0 0 38px rgba(60,150,255,.38), inset 0 0 38px rgba(60,150,255,.22),
+                0 0 8px rgba(96,172,255,.55);
     transition: opacity .30s ease; opacity: 0; }
   #ring.on { opacity: 1; }
-  #ring::before { content: ''; position: absolute; inset: 9px; border-radius: 50%;
-    border: 1px solid rgba(96,172,255,.13); }
-  #ring i { position: absolute; left: 50%; top: 50%; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px;
-    border-radius: 50%; background: rgba(140,200,255,.55); box-shadow: 0 0 10px rgba(120,190,255,.7); }
-  #ring b { position: absolute; font-size: 9.5px; letter-spacing: .22em; color: rgba(140,200,255,.42);
-    font-weight: 400; white-space: nowrap; }
-  #ring b.t { left: 50%; top: -17px; transform: translateX(-50%); }
-  #ring b.d { left: 50%; bottom: -17px; transform: translateX(-50%); }
 
   /* 城市标签 */
   #cities { position: fixed; inset: 0; z-index: 14; pointer-events: none; overflow: hidden; }
@@ -73,30 +60,12 @@
     box-shadow: 0 0 8px rgba(255,190,110,.9); }
   .city.on { opacity: 1; color: rgba(255,232,186,.92); }
 
-  /* 手势摄像头窗口 */
-  #cam { left: 16px; bottom: 132px; padding: 8px; display: none; }
-  #cam.on { display: block; }
-  #cam video { display: block; width: 224px; height: 168px; border-radius: 8px;
-    background: #05090f; transform: scaleX(-1); }
-  #cam .bar { display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    margin-top: 7px; font-size: 10.5px; color: #8ea0c4; letter-spacing: .06em; }
-  #cam .s { display: inline-block; width: 6px; height: 6px; border-radius: 50%;
-    background: #f0a35a; margin-right: 6px; vertical-align: 1px; transition: .3s; }
-  #cam .s.ok { background: #5ad6a0; box-shadow: 0 0 8px rgba(90,214,160,.6); }
-  #cam .s.err { background: #ff5b5b; }
-  #cam .r { position: absolute; right: 1px; bottom: 1px; width: 18px; height: 18px;
-    cursor: nwse-resize; color: rgba(150,190,240,.42); }
-  #cam .r svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.6; }
-  #hud .k b.link { color: #7ec8ff; cursor: pointer; border-bottom: 1px dashed rgba(126,200,255,.35); }
-  #hud .k b.link:hover { color: #b8dcff; }
-
   #hint { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 20;
     color: rgba(130,180,255,.32); font-size: 11.5px; letter-spacing: .18em; pointer-events: none;
     white-space: nowrap; transition: opacity 1.2s ease 2s; opacity: 0; }
   #hint.show { opacity: 1; }
   #hint.gone { opacity: 0 !important; }
   @media (max-width: 720px) {
-    #hud { left: 12px; bottom: 12px; min-width: 0; padding: 9px 11px; }
     #hint { display: none; }
   }
 </style>
@@ -112,22 +81,7 @@
   <button id="retry" onclick="location.reload()">重新加载</button>
 </div>
 
-<div id="hud" class="panel">
-  <h4>状态 · STATUS</h4>
-  <div class="k"><span>可见粒子</span><b id="s-pts">—</b></div>
-  <div class="k"><span>陆地采样</span><b id="s-land">—</b></div>
-  <div class="k"><span>数据源</span><b id="s-src">—</b></div>
-  <div class="k"><span>FPS</span><b id="s-fps">—</b></div>
-  <div class="k"><span>手势</span><b id="s-hand" class="link">点击开启</b></div>
-</div>
-
-<div id="cam" class="panel">
-  <video id="camv" playsinline muted></video>
-  <div class="bar"><span><i class="s" id="cam-s"></i><span id="cam-t">启动中…</span></span><span>捏合缩放</span></div>
-  <div class="r" id="cam-r"><svg viewBox="0 0 16 16"><path d="M14 6L6 14M14 10l-4 4"/></svg></div>
-</div>
-
-<div id="ring"><i></i><b class="t">SCALE</b><b class="d">PINCH</b></div>
+<div id="ring"></div>
 <div id="cities"></div>
 
 <div id="hint">拖动旋转 · 滚轮缩放 · 转到背面可见太阳</div>
@@ -159,9 +113,6 @@ const CFG = {
   oceanKeep     : 0.02,
   fogCount      : 45000,    // 内部雾体（Normal 混合，把内部填满）
   mistCount     : 60000,   // 内部辉光雾（Additive）
-  shellCount    : 14000,    // 外层「防护罩」雾壳
-  shellInner    : 1.02,     // 雾壳内半径（×R）
-  shellOuter    : 1.22,     // 雾壳外半径（×R）
   moonRadius    : 0.26,     // 月球半径（×R）
   moonDist      : 3.4,      // 月球轨道半径（×R）
   moonSpeed     : 0.012,    // 公转角速度 rad/s（很慢）
@@ -353,10 +304,9 @@ let baseHSL = { h: 0, s: 0, l: 0 };
 new THREE.Color('#3aa8ff').getHSL(baseHSL);
 const _c = new THREE.Color();
 
-/* 陆地：赤道深蓝 → 极地浅冰蓝（整体偏亮，避免画面发灰） */
-function landColor(lat) {
-  const t = Math.min(1, Math.abs(lat) / 90);
-  return _c.setHSL((baseHSL.h + t * 0.025) % 1, 0.90 - t * 0.40, 0.54 + t * 0.24);
+/* 陆地：统一蓝色小点（不随纬度变化，全陆一致） */
+function landColor() {
+  return _c.setHSL(baseHSL.h, 0.95, 0.56);
 }
 function oceanColor() {
   return _c.setHSL((baseHSL.h + 0.03) % 1, 0.85, 0.22);
@@ -388,7 +338,8 @@ const FRAG = `
     vec2 uv = gl_PointCoord - 0.5;
     float d2 = dot(uv, uv);
     if (d2 > 0.25) discard;
-    float a = smoothstep(0.17, 0.10, d2);
+    /* 实心小圆点：中心到边缘快速截止，避免光斑式辉光 */
+    float a = smoothstep(0.25, 0.18, d2);
     a *= 0.92 + 0.08 * sin(uTime * 1.8);
     gl_FragColor = vec4(vColor, a);
   }
@@ -435,21 +386,16 @@ const surfMat = new THREE.ShaderMaterial({
   transparent: true, depthWrite: true, depthTest: true, blending: THREE.NormalBlending
 });
 const fogMat = new THREE.ShaderMaterial({
-  uniforms: { uPixelRatio:{value:renderer.getPixelRatio()}, uSizeScale:{value:1}, uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()}, uOpacity:{value:0.030}, uEmissive:{value:0.0} },
+  uniforms: { uPixelRatio:{value:renderer.getPixelRatio()}, uSizeScale:{value:1}, uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()}, uOpacity:{value:0.16}, uEmissive:{value:0.0} },
   vertexShader: FOG_VERT, fragmentShader: FOG_FRAG,
   transparent: true, depthWrite: false, depthTest: true, blending: THREE.NormalBlending
 });
 const mistMat = new THREE.ShaderMaterial({
-  uniforms: { uPixelRatio:{value:renderer.getPixelRatio()}, uSizeScale:{value:1}, uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()}, uOpacity:{value:0.028}, uEmissive:{value:0.0} },
+  uniforms: { uPixelRatio:{value:renderer.getPixelRatio()}, uSizeScale:{value:1}, uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()}, uOpacity:{value:0.10}, uEmissive:{value:0.0} },
   vertexShader: FOG_VERT, fragmentShader: FOG_FRAG,
   transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending
 });
-/* 外层「防护罩」雾壳：大而极淡的软粒子，加色混合成一层球状薄雾 */
-const shellMat = new THREE.ShaderMaterial({
-  uniforms: { uPixelRatio:{value:renderer.getPixelRatio()}, uSizeScale:{value:1}, uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()}, uOpacity:{value:0.028}, uEmissive:{value:0.08} },
-  vertexShader: VERT, fragmentShader: FOG_FRAG,
-  transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending
-});
+/* （外层防护罩已改为半透明蓝色球壳，见 buildShell；不再使用粒子雾壳） */
 
 function makePoints(pos, col, siz, mat) {
   const g = new THREE.BufferGeometry();
@@ -468,24 +414,24 @@ function buildInterior() {
     const rr = Math.sqrt(Math.max(0, 1 - u * u));
     return [rr * Math.cos(th), u, rr * Math.sin(th)];
   };
-  /* 从球心附近一直填到表面下方，确保内部不是空的 */
+  /* 从球心附近一直填到表面下方，确保内部是明显的白色 */
   for (let j = 0; j < CFG.fogCount; j++) {
     const [dx, dy, dz] = rnd();
     const r = R * (0.16 + 0.82 * Math.cbrt(Math.random()));
     fPos.push(dx * r, dy * r, dz * r);
-    /* 内部雾：白色调（饱和度 0），整体压暗 */
-    col.setHSL(0, 0, 0.05 + Math.random() * 0.04);
+    /* 内部雾：纯白色（饱和度 0），亮度足够高才能盖住蓝色底 */
+    col.setHSL(0, 0, 0.20 + Math.random() * 0.06);
     fCol.push(col.r, col.g, col.b);
-    fSiz.push(0.90 + Math.random() * 0.90);
+    fSiz.push(1.20 + Math.random() * 0.80);
   }
   for (let j = 0; j < CFG.mistCount; j++) {
     const [dx, dy, dz] = rnd();
     const r = R * (0.20 + 0.79 * Math.cbrt(Math.random()));
     mPos.push(dx * r, dy * r, dz * r);
-    /* 内部辉光雾：白色调，更暗 */
-    col.setHSL(0, 0, 0.03 + Math.random() * 0.03);
+    /* 内部辉光雾：纯白色，稍暗一点作层次 */
+    col.setHSL(0, 0, 0.12 + Math.random() * 0.05);
     mCol.push(col.r, col.g, col.b);
-    mSiz.push(0.75 + Math.random() * 0.75);
+    mSiz.push(1.00 + Math.random() * 0.70);
   }
   if (fogPoints)  { spinner.remove(fogPoints);  fogPoints.geometry.dispose(); }
   if (mistPoints) { spinner.remove(mistPoints); mistPoints.geometry.dispose(); }
@@ -494,46 +440,44 @@ function buildInterior() {
   spinner.add(fogPoints); spinner.add(mistPoints);
 }
 
-/* 外层「防护罩」：贴着球面外的一层球状雾壳（不随自转，保持稳定罩感） */
-let shellPoints = null, shellMesh = null;
+/* 外层「防护罩」：半透明蓝色球壳（透明蓝罩，带菲涅尔边缘发光）。
+   使用 FrontSide 渲染，罩面正对相机一侧呈淡蓝半透明，边缘（视线擦过球面）
+   因菲涅尔效应更亮，形成清晰的球罩轮廓；不随自转，保持稳定罩感。 */
+let shellMesh = null;
 function buildShell() {
-  const R = CFG.radius, col = new THREE.Color();
-  const pos = [], c = [], s = [];
-  for (let j = 0; j < CFG.shellCount; j++) {
-    const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2;
-    const rr = Math.sqrt(Math.max(0, 1 - u * u));
-    const dx = rr * Math.cos(th), dy = u, dz = rr * Math.sin(th);
-    const r = R * (CFG.shellInner + (CFG.shellOuter - CFG.shellInner) * Math.pow(Math.random(), 0.7));
-    pos.push(dx * r, dy * r, dz * r);
-    col.setHSL(baseHSL.h, 0.90, 0.20 + Math.random() * 0.14);
-    c.push(col.r, col.g, col.b);
-    s.push(1.80 + Math.random() * 1.80);
-  }
-  if (shellPoints) { tilt.remove(shellPoints); shellPoints.geometry.dispose(); }
-  shellPoints = makePoints(pos, c, s, shellMat);
-  tilt.add(shellPoints);
-
-  /* 再叠一层极淡的菲涅尔球壳，做出「罩子」的边缘轮廓 */
+  const R = CFG.radius;
   if (!shellMesh) {
     shellMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(R * CFG.shellOuter * 1.06, 64, 48),
+      new THREE.SphereGeometry(R * 1.20, 64, 48),
       new THREE.ShaderMaterial({
-        uniforms: { uColor: { value: new THREE.Color(0x3aa8ff) }, uPower: { value: 3.8 }, uStrength: { value: 0.14 } },
+        uniforms: {
+          uColor:    { value: new THREE.Color(0x3aa8ff) },
+          uOpacity:  { value: 0.10 },
+          uPower:    { value: 3.6 },
+          uStrength: { value: 0.55 }
+        },
         vertexShader: `
           varying vec3 vN;
+          varying vec3 vView;
           void main() {
             vN = normalize(normalMatrix * normal);
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            vec4 mv = modelViewMatrix * vec4(position, 1.0);
+            vView = normalize(-mv.xyz);
+            gl_Position = projectionMatrix * mv;
           }`,
         fragmentShader: `
-          uniform vec3 uColor; uniform float uPower, uStrength;
-          varying vec3 vN;
+          uniform vec3  uColor;
+          uniform float uOpacity, uPower, uStrength;
+          varying vec3  vN;
+          varying vec3  vView;
           void main() {
-            float f = pow(max(0.0, 0.72 - dot(vN, vec3(0.0, 0.0, 1.0))), uPower);
-            gl_FragColor = vec4(uColor * f * uStrength, f * uStrength);
+            float fres = pow(1.0 - abs(dot(normalize(vN), normalize(vView))), uPower);
+            float a = uOpacity + fres * uStrength;
+            a = clamp(a, 0.0, 0.55);
+            gl_FragColor = vec4(uColor, a);
           }`,
-        transparent: true, blending: THREE.AdditiveBlending,
-        side: THREE.BackSide, depthWrite: false
+        transparent: true, blending: THREE.NormalBlending,
+        side: THREE.FrontSide, depthWrite: false
       })
     );
     tilt.add(shellMesh);
@@ -560,20 +504,20 @@ async function buildSurface(N) {
     if (!isLand && Math.random() > CFG.oceanKeep) continue;
     isLand ? landCount++ : oceanCount++;
 
-    const rr = R * (1 + (Math.random() - 0.5) * 0.008) * (isLand ? 1.006 : 1.0);
+    /* 陆地/海洋都在同一球面高度（半径固定，无随机扰动），平行排列 */
+    const rr = R * (isLand ? 1.006 : 1.0);
     pos.push(x * rr, y * rr, z * rr);
 
-    const c = isLand ? landColor(lat) : oceanColor();
+    const c = isLand ? landColor() : oceanColor();
     col.push(c.r, c.g, c.b);
-    siz.push(isLand ? 0.55 + Math.random() * 0.30 : 0.28 + Math.random() * 0.14);
+    /* 陆地：大小一致的蓝色小点；海洋：较小且略随机 */
+    siz.push(isLand ? 0.50 : 0.28 + Math.random() * 0.14);
   }
 
   if (earthPoints) { spinner.remove(earthPoints); earthPoints.geometry.dispose(); }
   earthPoints = makePoints(pos, col, siz, surfMat);
   spinner.add(earthPoints);
 
-  $('s-pts').textContent  = (pos.length / 3).toLocaleString();
-  $('s-land').textContent = landCount.toLocaleString();
   console.log('[Earth] 采样 ' + N + ' 点 · 陆地 ' + landCount + ' · 海洋 ' + oceanCount + ' · 最终 ' + pos.length / 3 + ' 粒子');
   building = false;
   return pos.length / 3;
@@ -836,7 +780,7 @@ function buildStarfield() {
     return;
   }
   landGeoRef = got.land;
-  $('s-src').textContent = got.url.indexOf('110m') >= 0 ? 'Natural Earth 1:110m' : 'Natural Earth 1:10m';
+  console.log('[Earth] 数据源: ' + (got.url.indexOf('110m') >= 0 ? 'Natural Earth 1:110m' : 'Natural Earth 1:10m'));
 
   setProgress('光栅化陆地边界…'); setBar(0.8); await frame();
   landTable = rasterizeLand(got.land);
@@ -910,7 +854,7 @@ function updateCityLabels() {
 }
 
 const clock = new THREE.Clock();
-let spinY = 0, fpsT = 0, fpsN = 0, uiTick = 0;
+let spinY = 0, uiTick = 0;
 
 function animate() {
   requestAnimationFrame(animate);
@@ -924,7 +868,6 @@ function animate() {
   surfMat.uniforms.uTime.value  = t;
   fogMat.uniforms.uTime.value   = t;
   mistMat.uniforms.uTime.value  = t;
-  shellMat.uniforms.uTime.value = t;
   cityMat.uniforms.uTime.value  = t;
 
   if (starfield) { starfield.material.uniforms.uTime.value = t; starfield.rotation.y = t * 0.004; }
@@ -947,9 +890,6 @@ function animate() {
     updateRing();
   }
 
-  fpsN++; fpsT += dt;
-  if (fpsT >= 0.5) { $('s-fps').textContent = Math.round(fpsN / fpsT); fpsN = 0; fpsT = 0; }
-
   composer.render();
 }
 animate();
@@ -964,108 +904,10 @@ window.addEventListener('resize', () => {
   surfMat.uniforms.uPixelRatio.value  = pr;
   fogMat.uniforms.uPixelRatio.value   = pr;
   mistMat.uniforms.uPixelRatio.value  = pr;
-  shellMat.uniforms.uPixelRatio.value = pr;
   cityMat.uniforms.uPixelRatio.value  = pr;
   if (starfield) starfield.material.uniforms.uPixelRatio.value = pr;
   updateRing();
 });
-
-/* ── 可选：MediaPipe 手势捏合缩放（默认关闭，点击 HUD 开启） ──── */
-const MP_VER = '0.4.1675469240';
-let handOn = false, pinchPrev = null, pinchT = 0;
-
-function loadScript(src) {
-  return new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = src; s.crossOrigin = 'anonymous';
-    s.onload = res; s.onerror = () => rej(new Error('加载失败 ' + src));
-    document.head.appendChild(s);
-  });
-}
-function setCamState(cls, text) {
-  $('cam-s').className = 's' + (cls ? ' ' + cls : '');
-  $('cam-t').textContent = text;
-}
-
-function onHandResults(res) {
-  const lm = res.multiHandLandmarks && res.multiHandLandmarks[0];
-  if (!lm) { pinchPrev = null; return; }
-  const a = lm[4], b = lm[8];                       // 拇指尖 / 食指尖
-  const d = Math.hypot(a.x - b.x, a.y - b.y);
-  const now = performance.now();
-  if (pinchPrev !== null && now - pinchT < 400) {
-    const delta = d - pinchPrev;
-    if (Math.abs(delta) > 0.004 && Math.abs(delta) < 0.12) {
-      const dist = camera.position.distanceTo(controls.target);
-      const nd = THREE.MathUtils.clamp(dist * (1 - delta * 2.6), controls.minDistance, controls.maxDistance);
-      camera.position.sub(controls.target).multiplyScalar(nd / dist).add(controls.target);
-    }
-  }
-  pinchPrev = d; pinchT = now;
-}
-
-async function enableHands() {
-  if (handOn) return;
-  handOn = true;
-  const btn = $('s-hand');
-  btn.textContent = '加载中…';
-  $('cam').classList.add('on');
-  setCamState('', '加载模型…');
-
-  try {
-    if (typeof window.Hands === 'undefined')
-      await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/hands@' + MP_VER + '/hands.js');
-    if (typeof window.Camera === 'undefined')
-      await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@' + MP_VER + '/camera_utils.js');
-    if (typeof window.Hands === 'undefined') throw new Error('MediaPipe 未就绪');
-  } catch (e) {
-    console.warn('[Hands] 模型加载失败', e);
-    setCamState('err', '模型加载失败'); btn.textContent = '重试'; handOn = false; return;
-  }
-
-  const video = $('camv');
-  let hands;
-  try {
-    hands = new window.Hands({
-      locateFile: (f) => 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@' + MP_VER + '/' + f
-    });
-    hands.setOptions({ maxNumHands: 1, modelComplexity: 0, minDetectionConfidence: 0.6, minTrackingConfidence: 0.55 });
-    hands.onResults(onHandResults);
-  } catch (e) {
-    console.warn('[Hands] 初始化失败', e);
-    setCamState('err', '初始化失败'); btn.textContent = '重试'; handOn = false; return;
-  }
-
-  try {
-    const cam = new window.Camera(video, {
-      onFrame: async () => { try { await hands.send({ image: video }); } catch (e) {} },
-      width: 320, height: 240
-    });
-    await cam.start();
-    setCamState('ok', '已就绪'); btn.textContent = '已开启';
-  } catch (e) {
-    console.warn('[Hands] 摄像头不可用', e);
-    setCamState('err', '摄像头不可用'); btn.textContent = '重试'; handOn = false;
-  }
-}
-$('s-hand').addEventListener('click', () => { enableHands(); });
-
-/* 摄像头窗口可拖拽缩放 */
-(() => {
-  const v = $('camv'), h = $('cam-r');
-  let dragging = false, sx = 0, sw = 0;
-  h.addEventListener('pointerdown', (e) => {
-    dragging = true; sx = e.clientX; sw = v.clientWidth;
-    h.setPointerCapture(e.pointerId); e.stopPropagation(); e.preventDefault();
-  });
-  h.addEventListener('pointermove', (e) => {
-    if (!dragging) return;
-    const w = Math.max(120, Math.min(520, sw + (e.clientX - sx)));
-    v.style.width = w + 'px'; v.style.height = (w * 0.75) + 'px';
-  });
-  h.addEventListener('pointerup', () => { dragging = false; });
-  h.addEventListener('pointercancel', () => { dragging = false; });
-})();
 
 /* 备用判定：d3.geoContains（真实球面几何，单次约 39ms）。
    注意：world-atlas 的 land-10m 环缠绕方向与 d3 的球面约定不一致，
