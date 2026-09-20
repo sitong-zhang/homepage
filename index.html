@@ -46,12 +46,6 @@
   #hud .k { display: flex; justify-content: space-between; gap: 16px; line-height: 1.85; }
   #hud .k b { color: #e8eefc; font-weight: 500; font-variant-numeric: tabular-nums; }
 
-  #fs { right: 16px; bottom: 16px; width: 44px; height: 44px; display: flex; align-items: center;
-    justify-content: center; cursor: pointer; color: #cfe2ff; transition: .2s; }
-  #fs:hover { background: rgba(80,150,255,.14); border-color: rgba(80,150,255,.45); }
-  #fs svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7;
-    stroke-linecap: round; stroke-linejoin: round; }
-
   /* 悬浮蓝圈：固定在屏幕正中，不随相机旋转/缩放移动；地球触到它时淡出 */
   #ring { position: fixed; left: 50%; top: 50%; z-index: 15; pointer-events: none;
     border-radius: 50%; transform: translate(-50%, -50%);
@@ -131,10 +125,6 @@
   <video id="camv" playsinline muted></video>
   <div class="bar"><span><i class="s" id="cam-s"></i><span id="cam-t">启动中…</span></span><span>捏合缩放</span></div>
   <div class="r" id="cam-r"><svg viewBox="0 0 16 16"><path d="M14 6L6 14M14 10l-4 4"/></svg></div>
-</div>
-
-<div id="fs" class="panel" title="全屏">
-  <svg viewBox="0 0 24 24"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
 </div>
 
 <div id="ring"><i></i><b class="t">SCALE</b><b class="d">PINCH</b></div>
@@ -415,6 +405,19 @@ const FOG_FRAG = `
     gl_FragColor = vec4(vColor, a);
   }
 `;
+/* 内部雾专用顶点着色器：纯色直出，不受光照/夜侧影响，保证雾是白色 */
+const FOG_VERT = `
+  attribute float size;
+  attribute vec3  aColor;
+  uniform float uPixelRatio, uSizeScale;
+  varying vec3  vColor;
+  void main() {
+    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+    vColor = aColor;
+    gl_PointSize = size * uSizeScale * uPixelRatio * (9.0 / -mvPosition.z);
+    gl_Position  = projectionMatrix * mvPosition;
+  }
+`;
 
 let landTable = null, landGeoRef = null;
 let earthPoints = null, fogPoints = null, mistPoints = null;
@@ -432,13 +435,13 @@ const surfMat = new THREE.ShaderMaterial({
   transparent: true, depthWrite: true, depthTest: true, blending: THREE.NormalBlending
 });
 const fogMat = new THREE.ShaderMaterial({
-  uniforms: { uPixelRatio:{value:renderer.getPixelRatio()}, uSizeScale:{value:1}, uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()}, uOpacity:{value:0.05}, uEmissive:{value:0.06} },
-  vertexShader: VERT, fragmentShader: FOG_FRAG,
+  uniforms: { uPixelRatio:{value:renderer.getPixelRatio()}, uSizeScale:{value:1}, uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()}, uOpacity:{value:0.030}, uEmissive:{value:0.0} },
+  vertexShader: FOG_VERT, fragmentShader: FOG_FRAG,
   transparent: true, depthWrite: false, depthTest: true, blending: THREE.NormalBlending
 });
 const mistMat = new THREE.ShaderMaterial({
-  uniforms: { uPixelRatio:{value:renderer.getPixelRatio()}, uSizeScale:{value:1}, uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()}, uOpacity:{value:0.045}, uEmissive:{value:0.10} },
-  vertexShader: VERT, fragmentShader: FOG_FRAG,
+  uniforms: { uPixelRatio:{value:renderer.getPixelRatio()}, uSizeScale:{value:1}, uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()}, uOpacity:{value:0.028}, uEmissive:{value:0.0} },
+  vertexShader: FOG_VERT, fragmentShader: FOG_FRAG,
   transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending
 });
 /* 外层「防护罩」雾壳：大而极淡的软粒子，加色混合成一层球状薄雾 */
@@ -470,7 +473,8 @@ function buildInterior() {
     const [dx, dy, dz] = rnd();
     const r = R * (0.16 + 0.82 * Math.cbrt(Math.random()));
     fPos.push(dx * r, dy * r, dz * r);
-    col.setHSL(baseHSL.h, 0.85, 0.07 + Math.random() * 0.05);
+    /* 内部雾：白色调（饱和度 0），整体压暗 */
+    col.setHSL(0, 0, 0.05 + Math.random() * 0.04);
     fCol.push(col.r, col.g, col.b);
     fSiz.push(0.90 + Math.random() * 0.90);
   }
@@ -478,7 +482,8 @@ function buildInterior() {
     const [dx, dy, dz] = rnd();
     const r = R * (0.20 + 0.79 * Math.cbrt(Math.random()));
     mPos.push(dx * r, dy * r, dz * r);
-    col.setHSL(baseHSL.h, 0.90, 0.035 + Math.random() * 0.040);
+    /* 内部辉光雾：白色调，更暗 */
+    col.setHSL(0, 0, 0.03 + Math.random() * 0.03);
     mCol.push(col.r, col.g, col.b);
     mSiz.push(0.75 + Math.random() * 0.75);
   }
@@ -852,10 +857,6 @@ function buildStarfield() {
   setTimeout(() => $('hint').classList.add('gone'), 7000);
 })();
 
-$('fs').addEventListener('click', () => {
-  document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
-});
-
 /* ── 悬浮蓝圈：固定在屏幕中心，地球涨到碰到它时淡出 ─────────── */
 const ringEl = $('ring');
 function ringRadiusPx() {
@@ -908,7 +909,6 @@ function updateCityLabels() {
   }
 }
 
-let autoSpin = true;
 const clock = new THREE.Clock();
 let spinY = 0, fpsT = 0, fpsN = 0, uiTick = 0;
 
@@ -918,7 +918,7 @@ function animate() {
   const t  = clock.getElapsedTime();
   controls.update();
 
-  if (autoSpin) spinY += dt * 0.05;
+  /* 固定朝向：地球不自转（取消自动旋转），仅保留用户手动拖动视角 */
   spinner.rotation.y = spinY;
 
   surfMat.uniforms.uTime.value  = t;
