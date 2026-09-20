@@ -39,17 +39,7 @@
   #retry.on { display: inline-block; }
   #retry:active { transform: scale(.96); }
 
-  /* 悬浮蓝圈：固定在屏幕正中，不随相机旋转/缩放移动；地球触到它时淡出。
-     加粗：粗圆环 + 内外双层光晕，去掉细内环与中心圆点 */
-  #ring { position: fixed; left: 50%; top: 50%; z-index: 15; pointer-events: none;
-    border-radius: 50%; transform: translate(-50%, -50%);
-    border: 5px solid rgba(96,172,255,.72);
-    box-shadow: 0 0 38px rgba(60,150,255,.38), inset 0 0 38px rgba(60,150,255,.22),
-                0 0 8px rgba(96,172,255,.55);
-    transition: opacity .30s ease; opacity: 0; }
-  #ring.on { opacity: 1; }
-
-  /* 城市标签 */
+   /* 城市标签 */
   #cities { position: fixed; inset: 0; z-index: 14; pointer-events: none; overflow: hidden; }
   .city { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); white-space: nowrap;
     font-size: 10.5px; letter-spacing: .08em; color: rgba(255,226,168,.0);
@@ -109,7 +99,6 @@
   <button id="retry" onclick="location.reload()">重新加载</button>
 </div>
 
-<div id="ring"></div>
 <div id="cities"></div>
 
 <!-- 手势摄像头（屏幕外隐藏运行）+ 顶部白色手势指示球（华为隔空手势风格） -->
@@ -152,8 +141,7 @@ const CFG = {
   moonDist      : 3.4,      // 月球轨道半径（×R）
   moonSpeed     : 0.012,    // 公转角速度 rad/s（很慢）
   cityPer       : 46,       // 每座城市的灯光点数
-  citySpread    : 0.052,    // 城市灯光扩散半径（×R）
-  ringRatio     : 0.34      // 悬浮蓝圈半径 = min(宽,高) × 此值
+  citySpread    : 0.052     // 城市灯光扩散半径（×R）
 };
 
 const SUN_DIR    = new THREE.Vector3(0.60, 0.28, 0.75).normalize();
@@ -358,24 +346,34 @@ const VERT = `
   uniform vec3  uLightDir;
   uniform float uEmissive;
   uniform float uMorph;      // 0=地球  1=手形
-  uniform vec3  uJoints[21]; // 21 个手部关键点
+  uniform vec3  uJoints[22]; // 21 个手部关键点 + 1 个掌心虚拟点
   uniform float uSegA[23];   // 每段起点关键点索引
   uniform float uSegB[23];   // 每段终点关键点索引
   uniform float uSegR[23];   // 每段半径
   varying vec3  vColor;
   void main() {
     int si = int(aSeg);
-    vec3 A = uJoints[int(uSegA[si])];
-    vec3 B = uJoints[int(uSegB[si])];
-    vec3 axis = B - A;
-    float len = length(axis);
-    vec3 dir = axis / max(len, 0.0001);
-    vec3 up = abs(dir.y) < 0.99 ? vec3(0.0,1.0,0.0) : vec3(1.0,0.0,0.0);
-    vec3 side = normalize(cross(dir, up));
-    vec3 up2 = cross(side, dir);
-    float ang = aAngle * 6.28318;
-    vec3 off = (cos(ang)*side + sin(ang)*up2) * (aRadius * uSegR[si]);
-    vec3 handPos = A + dir * (aT * len) + off;
+    vec3 handPos;
+    if (si == 17) {
+      /* 掌心圆盘：以掌心虚拟点(21)为中心，在 XY 平面铺实心圆盘（正对屏幕） */
+      vec3 C = uJoints[21];
+      float ang2 = aAngle * 6.28318;
+      float r2 = aRadius * uSegR[17];
+      float zT = (aT - 0.5) * 0.30;
+      handPos = C + vec3(cos(ang2) * r2, sin(ang2) * r2, zT * uSegR[17] * 0.6);
+    } else {
+      vec3 A = uJoints[int(uSegA[si])];
+      vec3 B = uJoints[int(uSegB[si])];
+      vec3 axis = B - A;
+      float len = length(axis);
+      vec3 dir = axis / max(len, 0.0001);
+      vec3 up = abs(dir.y) < 0.99 ? vec3(0.0,1.0,0.0) : vec3(1.0,0.0,0.0);
+      vec3 side = normalize(cross(dir, up));
+      vec3 up2 = cross(side, dir);
+      float ang = aAngle * 6.28318;
+      vec3 off = (cos(ang)*side + sin(ang)*up2) * (aRadius * uSegR[si]);
+      handPos = A + dir * (aT * len) + off;
+    }
 
     vec3 morphed = mix(position, handPos, uMorph);
 
@@ -443,7 +441,7 @@ scene.add(tilt);
 
 const surfMat = new THREE.ShaderMaterial({
   uniforms: { uPixelRatio:{value:renderer.getPixelRatio()}, uSizeScale:{value:1}, uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()}, uEmissive:{value:0.85},
-    uMorph:{value:0}, uJoints:{value:new Array(21).fill(0).map(() => new THREE.Vector3(0,0,0))},
+    uMorph:{value:0}, uJoints:{value:new Array(22).fill(0).map(() => new THREE.Vector3(0,0,0))},
     uSegA:{value:new Float32Array(23)}, uSegB:{value:new Float32Array(23)}, uSegR:{value:new Float32Array(23)} },
   vertexShader: VERT, fragmentShader: FRAG,
   transparent: true, depthWrite: true, depthTest: true, blending: THREE.NormalBlending
@@ -458,7 +456,7 @@ const mistMat = new THREE.ShaderMaterial({
   vertexShader: FOG_VERT, fragmentShader: FOG_FRAG,
   transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending
 });
-/* （外层防护罩已改为半透明蓝色球壳，见 buildShell；不再使用粒子雾壳） */
+/* （外层蓝色防护罩已移除，内部雾仍保留提供体积感） */
 
 function makePoints(pos, col, siz, mat, extra) {
   const g = new THREE.BufferGeometry();
@@ -475,16 +473,19 @@ function makePoints(pos, col, siz, mat, extra) {
   return new THREE.Points(g, mat);
 }
 
-/* ── 手形骨骼段定义（MediaPipe 21 关键点 → 23 根骨骼段）──────────────
+/* ── 手形骨骼段定义（MediaPipe 21 关键点 → 18 段：16 指节 + 腕部 + 掌心盘）──
    每段 [起点关键点, 终点关键点, 半径, 权重]；权重用于按体积分配粒子。
-   索引：0=腕 1-4=拇指 5-8=食指 9-12=中指 13-16=无名指 17-20=小指 */
+   索引：0=腕 1-4=拇指 5-8=食指 9-12=中指 13-16=无名指 17-20=小指，21=掌心虚拟点
+   掌心盘(段17)：特殊段，以掌心21为中心在 xy 平面铺实心圆盘，撑起手掌肉感 */
+const PALM_SEG = 17;   // 掌心圆盘段索引（shader 特殊处理）
 const HAND_SEGMENTS = [
-  [0,1,0.13,1],[1,2,0.13,1],[2,3,0.11,1],[3,4,0.09,1],   // 拇指
-  [0,5,0.14,1],[5,6,0.13,1],[6,7,0.11,1],[7,8,0.09,1],   // 食指
-  [0,9,0.14,1],[9,10,0.13,1],[10,11,0.11,1],[11,12,0.09,1], // 中指
-  [0,13,0.13,1],[13,14,0.12,1],[14,15,0.10,1],[15,16,0.08,1], // 无名指
-  [0,17,0.12,1],[17,18,0.11,1],[18,19,0.09,1],[19,20,0.08,1], // 小指
-  [5,9,0.32,2],[9,13,0.32,2],[13,17,0.30,2]              // 手掌横向填充
+  [0,1,0.16,1],[1,2,0.15,1],[2,3,0.13,1],[3,4,0.11,1],     // 拇指
+  [5,6,0.19,1],[6,7,0.17,1],[7,8,0.14,1],                  // 食指（从指根）
+  [9,10,0.20,1],[10,11,0.18,1],[11,12,0.15,1],             // 中指
+  [13,14,0.18,1],[14,15,0.16,1],[15,16,0.13,1],            // 无名指
+  [17,18,0.16,1],[18,19,0.14,1],[19,20,0.12,1],            // 小指
+  [0,21,0.22,1],                                           // 腕→掌心
+  [21,21,0.60,6]                                           // 掌心圆盘（特殊）
 ];
 /* 预计算各段的粒子分配权重（权重 × 段近似体积） */
 const HAND_SEG_WEIGHTS = (() => {
@@ -542,49 +543,7 @@ function buildInterior() {
   spinner.add(fogPoints); spinner.add(mistPoints);
 }
 
-/* 外层「防护罩」：半透明蓝色球壳（透明蓝罩，带菲涅尔边缘发光）。
-   使用 FrontSide 渲染，罩面正对相机一侧呈淡蓝半透明，边缘（视线擦过球面）
-   因菲涅尔效应更亮，形成清晰的球罩轮廓；不随自转，保持稳定罩感。 */
-let shellMesh = null;
-function buildShell() {
-  const R = CFG.radius;
-  if (!shellMesh) {
-    shellMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(R * 1.20, 64, 48),
-      new THREE.ShaderMaterial({
-        uniforms: {
-          uColor:    { value: new THREE.Color(0x3aa8ff) },
-          uOpacity:  { value: 0.10 },
-          uPower:    { value: 3.6 },
-          uStrength: { value: 0.55 }
-        },
-        vertexShader: `
-          varying vec3 vN;
-          varying vec3 vView;
-          void main() {
-            vN = normalize(normalMatrix * normal);
-            vec4 mv = modelViewMatrix * vec4(position, 1.0);
-            vView = normalize(-mv.xyz);
-            gl_Position = projectionMatrix * mv;
-          }`,
-        fragmentShader: `
-          uniform vec3  uColor;
-          uniform float uOpacity, uPower, uStrength;
-          varying vec3  vN;
-          varying vec3  vView;
-          void main() {
-            float fres = pow(1.0 - abs(dot(normalize(vN), normalize(vView))), uPower);
-            float a = uOpacity + fres * uStrength;
-            a = clamp(a, 0.0, 0.55);
-            gl_FragColor = vec4(uColor, a);
-          }`,
-        transparent: true, blending: THREE.NormalBlending,
-        side: THREE.FrontSide, depthWrite: false
-      })
-    );
-    tilt.add(shellMesh);
-  }
-}
+/* （外层防护罩已移除：用户要求取消蓝色保护罩） */
 
 async function buildSurface(N) {
   if (building || !landTable) return 0;
@@ -894,13 +853,11 @@ function buildStarfield() {
   setProgress('光栅化陆地边界…'); setBar(0.8); await frame();
   landTable = rasterizeLand(got.land);
   buildInterior();
-  buildShell();
   await buildSurface(CFG.targetSamples);
   buildCities();
   buildMoon();
   buildStarfield();
   buildSun();
-  updateRing();
   setBar(1);
 
   const el = $('loading');
@@ -909,23 +866,6 @@ function buildStarfield() {
   /* 手势自动开启：加载完成即启动摄像头手势识别（无需点击，无任何文字） */
   setTimeout(enableHands, 600);
 })();
-
-/* ── 悬浮蓝圈：固定在屏幕中心，地球涨到碰到它时淡出 ─────────── */
-const ringEl = $('ring');
-function ringRadiusPx() {
-  return Math.min(window.innerWidth, window.innerHeight) * CFG.ringRatio;
-}
-function earthRadiusPx() {
-  const d = camera.position.distanceTo(controls.target);
-  const ang = Math.asin(Math.min(0.9995, CFG.radius / Math.max(CFG.radius, d)));
-  return Math.tan(ang) / Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * (window.innerHeight / 2);
-}
-function updateRing() {
-  const r = ringRadiusPx();
-  ringEl.style.width  = (r * 2).toFixed(1) + 'px';
-  ringEl.style.height = (r * 2).toFixed(1) + 'px';
-  ringEl.classList.toggle('on', earthRadiusPx() < r - 4);
-}
 
 /* ── 城市标签投影：只在面向相机 + 夜侧时浮现，并做防重叠剔除 ── */
 const _cw = new THREE.Vector3(), _cn = new THREE.Vector3();
@@ -1017,7 +957,6 @@ function animate() {
   if ((uiTick++ & 1) === 0) {
     spinner.updateMatrixWorld(true);
     updateCityLabels();
-    updateRing();
   }
 
   composer.render();
@@ -1036,7 +975,6 @@ window.addEventListener('resize', () => {
   mistMat.uniforms.uPixelRatio.value  = pr;
   cityMat.uniforms.uPixelRatio.value  = pr;
   if (starfield) starfield.material.uniforms.uPixelRatio.value = pr;
-  updateRing();
 });
 
 /* ── 手势识别（Google MediaPipe GestureRecognizer，官方 tasks-vision）
@@ -1103,7 +1041,7 @@ function updateHandJoints(lm) {
   /* 尺度基准：手腕(0) → 中指根(9) 距离，各手势下相对稳定 */
   const wx = lm[9].x - lm[0].x, wy = lm[9].y - lm[0].y;
   const unitLen = Math.max(0.02, Math.hypot(wx, wy));
-  /* 目标：这个距离 = HAND_PALM_LEN 世界单位（约地球半径的 0.7 倍） */
+  /* 目标：这个距离 = HAND_PALM_LEN 世界单位 */
   const HAND_PALM_LEN = 1.4;
   const S = HAND_PALM_LEN / unitLen;
 
@@ -1114,40 +1052,48 @@ function updateHandJoints(lm) {
     const z = (az - p.z) * S * HAND_Z_SCALE;
     J[i].set(x, y, z);
   }
+
+  /* 掌心虚拟点(21)：四个指根(5,9,13,17)的平均，作为掌心圆盘中心 */
+  let px = 0, py = 0, pz = 0;
+  for (const i of [5, 9, 13, 17]) { px += lm[i].x; py += lm[i].y; pz += lm[i].z; }
+  px /= 4; py /= 4; pz /= 4;
+  J[21].set(
+    (px - ax) * S,
+    (ay - py) * S,
+    (pz - az) * S * HAND_Z_SCALE
+  );
 }
-/* 检测到的手势是否为「应触发地球变形」的三个重点手势 */
+/* 是否触发地球变形：任意识别到的手势都触发（张掌/握拳/比耶/点赞/食指/拇指向下/我爱你…）
+   仅当手完全离开（onGestureResult 里 !lm 分支）才流回地球 */
 function isMorphGesture(g) {
-  return g === 'Open_Palm' || g === 'Closed_Fist' || g === 'Victory';
+  return !!g && g !== 'none' && g !== 'unknown' && g !== 'undefined';
 }
 
 function onGestureResult(res) {
   const g = res.gestures && res.gestures[0] && res.gestures[0][0];
   const lm = res.landmarks && res.landmarks[0];
-  if (!g || !lm) {
+  if (!lm) {
     handPresent = false; handGesture = 'none';
     prevCX = prevCY = prevArea = null;
     setGestStatus('idle', 'idle');
     updateGestBubble(null, 0);
-    /* 无手势：白球缩回 + 地球流回原状 */
+    /* 无手：白球缩回 + 地球流回原状 */
     morphTarget = 0;
     return;
   }
+  /* 只要有手的关键点（landmarks）就变形，不依赖手势类别 —— 任意动作都能复刻 */
   handPresent = true;
-  handGesture = g.categoryName || 'unknown';
-  const conf = (g.score || 0) * 100;
-  const label = GEST_LABELS[handGesture] || { name: handGesture, ico: '🫱' };
+  handGesture = (g && g.categoryName) || 'unknown';
+  const conf = (g ? g.score : 0) * 100;
+  const label = GEST_LABELS[handGesture] || { name: '手势', ico: '🖐️' };
   setGestStatus(label.name + ' ' + conf.toFixed(0) + '%', 'ok');
-  updateGestBubble(handGesture, g.score || 0);
+  updateGestBubble(handGesture, g ? g.score : 0);
 
   /* 实时更新手形关节坐标（所有手势都更新，保证手形实时跟手） */
   updateHandJoints(lm);
 
-  /* 三个重点手势 → 地球溶解成手形；其余手势 → 流回地球 */
-  if (isMorphGesture(handGesture)) {
-    morphTarget = 1;
-  } else {
-    morphTarget = 0;
-  }
+  /* 有手 → 地球溶解成手形（任意手势） */
+  morphTarget = 1;
 
   /* 手掌中心：0=腕, 5/9/13/17=指根，平均 → 旋转控制基准 */
   const base = [0, 5, 9, 13, 17];
