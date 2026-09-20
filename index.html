@@ -67,13 +67,31 @@
     box-shadow: 0 6px 24px rgba(0,0,0,.45); pointer-events: none; }
   #camv { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block;
     border-radius: 8px; background: #000; transform: scaleX(-1); }
-  /* 手势状态条：摄像头正下方，实时显示识别到的手势与置信度（可读可看） */
-  #gest-status { margin-top: 5px; padding: 4px 6px; border-radius: 7px; text-align: center;
-    font-size: 11.5px; letter-spacing: .03em; font-weight: 600; min-height: 20px; line-height: 1.5;
-    color: rgba(160,200,255,.9); background: rgba(40,90,160,.18);
-    border: 1px solid rgba(80,160,255,.28); transition: background .3s ease, color .3s ease; }
-  #gest-status.ok  { background: rgba(60,220,140,.16); border-color: rgba(80,230,160,.4); color: #a8ffd8; }
-  #gest-status.warn{ background: rgba(255,180,60,.16); border-color: rgba(255,190,80,.4); color: #ffd9a0; }
+  /* 手势指示球（华为隔空手势风格）：摄像头正下方白色圆球，实时显示当前手势图标 + 置信度弧光 */
+  #gest-bubble { position: absolute; left: 50%; margin-left: -38px; bottom: -44px;
+    width: 76px; height: 76px; border-radius: 50%; z-index: 35;
+    background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.98), rgba(242,247,255,.86) 55%, rgba(212,226,248,.92));
+    box-shadow: 0 6px 20px rgba(0,0,0,.38), 0 0 0 3px rgba(255,255,255,.30), inset 0 -3px 8px rgba(120,150,210,.28);
+    display: flex; align-items: center; justify-content: center;
+    transition: box-shadow .3s ease; }
+  /* 置信度弧光：conic-gradient 按识别置信度填充（0%→360%） */
+  #gest-bubble .arc { position: absolute; inset: -5px; border-radius: 50%; pointer-events: none;
+    background: conic-gradient(rgba(80,190,255,.95) var(--arc, 0%), rgba(80,190,255,.12) 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+            mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
+    transition: background .25s ease; }
+  #gest-ico { font-size: 38px; line-height: 1; user-select: none;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,.28)); transition: transform .15s ease; }
+  /* 未检测到手：图标变灰缩小 */
+  #gest-bubble.idle #gest-ico { opacity: .4; transform: scale(.82); filter: grayscale(1) drop-shadow(0 2px 4px rgba(0,0,0,.2)); }
+  #gest-bubble.idle { box-shadow: 0 6px 20px rgba(0,0,0,.38), 0 0 0 3px rgba(255,255,255,.14), inset 0 -3px 8px rgba(120,150,210,.2); }
+  /* 识别成功：轻微呼吸脉冲 */
+  #gest-bubble.ok { animation: bubblePulse 1.2s ease-in-out infinite; }
+  @keyframes bubblePulse { 0%,100% { box-shadow: 0 6px 20px rgba(0,0,0,.38), 0 0 0 3px rgba(255,255,255,.30), inset 0 -3px 8px rgba(120,150,210,.28), 0 0 18px rgba(120,200,255,.35); }
+    50% { box-shadow: 0 6px 20px rgba(0,0,0,.38), 0 0 0 3px rgba(255,255,255,.30), inset 0 -3px 8px rgba(120,150,210,.28), 0 0 30px rgba(120,200,255,.6); } }
+  /* 加载/切换：旋转小弧 */
+  #gest-bubble.busy .arc { animation: arcSpin 1s linear infinite; background: conic-gradient(rgba(160,210,255,.9) 25%, rgba(160,210,255,.1) 0); }
+  @keyframes arcSpin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -90,10 +108,13 @@
 <div id="ring"></div>
 <div id="cities"></div>
 
-<!-- 手势摄像头小窗：下方实时显示识别到的手势 -->
+<!-- 手势摄像头小窗：下方白色圆球实时显示识别到的手势（华为隔空手势风格） -->
 <div id="hand-cam-wrap">
   <video id="camv" autoplay playsinline muted></video>
-  <div id="gest-status">手势识别加载中…</div>
+  <div id="gest-bubble" class="busy">
+    <i class="arc"></i>
+    <span id="gest-ico">🖐️</span>
+  </div>
 </div>
 
 <script src="./vendor/topojson-client.min.js"></script>
@@ -871,7 +892,8 @@ let spinY = 0, uiTick = 0;
 let gestYaw = 0, gestPitch = 0;
 /* 手势识别相关变量（提前声明，避免 animate 首帧 TDZ） */
 const camv = $('camv');
-const gestStatusEl = $('gest-status');
+const gestBubbleEl = $('gest-bubble');
+const gestIcoEl = $('gest-ico');
 let handOn = false, handModel = null, handDelegate = 'GPU';
 let prevCX = null, prevCY = null, prevArea = null;
 let handPresent = false, handGesture = 'none';
@@ -937,16 +959,36 @@ window.addEventListener('resize', () => {
 const GEST_WASM = './vendor/mediapipe/wasm';
 const GEST_MODEL = './vendor/mediapipe/gesture_recognizer.task';
 const GEST_LABELS = {
-  Open_Palm: '张开手掌 ✋', Closed_Fist: '握拳 ✊', Pointing_Up: '食指上指 ☝️',
-  Thumb_Up: '点赞 👍', Thumb_Down: '拇指向下 👎', Victory: '剪刀手 ✌️', ILoveYou: '我爱你 🤟'
+  Open_Palm: { name: '张开手掌', ico: '✋' }, Closed_Fist: { name: '握拳', ico: '✊' },
+  Pointing_Up: { name: '食指上指', ico: '☝️' }, Thumb_Up: { name: '点赞', ico: '👍' },
+  Thumb_Down: { name: '拇指向下', ico: '👎' }, Victory: { name: '剪刀手', ico: '✌️' },
+  ILoveYou: { name: '我爱你', ico: '🤟' }
+};
+const GEST_ICONS = {
+  Open_Palm: '✋', Closed_Fist: '✊', Pointing_Up: '☝️', Thumb_Up: '👍',
+  Thumb_Down: '👎', Victory: '✌️', ILoveYou: '🤟'
 };
 function setGestStatus(txt, cls) {
   const s = (cls || '') + '|' + txt;
   if (s === lastStatus) return;
   lastStatus = s;
-  gestStatusEl.innerHTML = txt;
-  gestStatusEl.classList.remove('ok', 'warn');
-  if (cls) gestStatusEl.classList.add(cls);
+  gestBubbleEl.classList.remove('ok', 'warn', 'idle', 'busy');
+  if (cls) gestBubbleEl.classList.add(cls);
+}
+/* 白色手势指示球：更新图标 + 置信度弧光 + 状态类（华为隔空手势风格） */
+function updateGestBubble(gesture, conf) {
+  if (gesture && gesture !== 'none' && gesture !== 'unknown') {
+    gestIcoEl.textContent = GEST_ICONS[gesture] || '🫱';
+    const pct = Math.max(0, Math.min(1, conf || 0)) * 360;
+    gestBubbleEl.style.setProperty('--arc', pct.toFixed(0) + 'deg');
+    gestBubbleEl.classList.remove('idle', 'busy');
+    gestBubbleEl.classList.add('ok');
+  } else {
+    gestIcoEl.textContent = '🖐️';
+    gestBubbleEl.style.setProperty('--arc', '0deg');
+    gestBubbleEl.classList.remove('ok', 'busy');
+    gestBubbleEl.classList.add('idle');
+  }
 }
 function onGestureResult(res) {
   const g = res.gestures && res.gestures[0] && res.gestures[0][0];
@@ -954,14 +996,16 @@ function onGestureResult(res) {
   if (!g || !lm) {
     handPresent = false; handGesture = 'none';
     prevCX = prevCY = prevArea = null;
-    setGestStatus('🖐️ 未检测到手', 'warn');
+    setGestStatus('idle', 'idle');
+    updateGestBubble(null, 0);
     return;
   }
   handPresent = true;
   handGesture = g.categoryName || 'unknown';
   const conf = (g.score || 0) * 100;
-  const label = GEST_LABELS[handGesture] || (handGesture + ' 🫱');
-  setGestStatus(label + ' <span style="opacity:.75;font-weight:400">' + conf.toFixed(0) + '%</span>', 'ok');
+  const label = GEST_LABELS[handGesture] || { name: handGesture, ico: '🫱' };
+  setGestStatus(label.name + ' ' + conf.toFixed(0) + '%', 'ok');
+  updateGestBubble(handGesture, g.score || 0);
 
   /* 手掌中心：0=腕, 5/9/13/17=指根，平均 → 旋转控制基准 */
   const base = [0, 5, 9, 13, 17];
@@ -1013,7 +1057,8 @@ async function enableHands() {
     });
     camv.srcObject = stream;
     await camv.play().catch(() => {});
-    setGestStatus('🖐️ 手势识别已启动' + (handDelegate === 'CPU' ? '（CPU）' : ''), 'ok');
+    setGestStatus('ready', 'ok');
+    updateGestBubble(null, 0);
     /* 循环送帧识别（VIDEO 模式需时间戳） */
     let sending = false, lastVideoTime = -1;
     const loop = async () => {
@@ -1039,14 +1084,17 @@ async function enableHands() {
       handModel = null;
       handDelegate = 'CPU';
       handOn = false;
-      setGestStatus('GPU 不可用，切换 CPU…', 'warn');
+      setGestStatus('cpu', 'warn');
+      updateGestBubble(null, 0);
       setTimeout(() => { if (!handOn) enableHands(); }, 300);
       return;
     }
     handOn = false;
     if (handModel && handModel.close) { try { handModel.close(); } catch (e2) {} handModel = null; }
     const msg = (e && e.message) ? e.message : String(e);
-    setGestStatus('失败：' + msg.slice(0, 24), 'warn');
+    setGestStatus('err', 'warn');
+    updateGestBubble(null, 0);
+    console.warn('[Hands] 手势启动失败:', msg);
     const retry = () => {
       window.removeEventListener('pointerdown', retry);
       window.removeEventListener('touchstart', retry);
