@@ -399,7 +399,9 @@ const VERT = `
     vec3 handC = vec3(0.98, 0.90, 0.80) + vec3(0.0, 0.02, 0.10) * aT;
     tint = mix(tint, handC, uMorph * 0.55);
     vColor = aColor * tint;
-    gl_PointSize = size * uSizeScale * uPixelRatio * (9.0 / -mvPosition.z);
+    /* 手形时粒子放大：让手更致密饱满（地球时保持原尺寸） */
+    float handBoost = 1.0 + uMorph * 1.05;
+    gl_PointSize = size * handBoost * uSizeScale * uPixelRatio * (9.0 / -mvPosition.z);
     gl_Position  = projectionMatrix * mvPosition;
   }
 `;
