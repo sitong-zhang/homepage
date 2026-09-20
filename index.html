@@ -68,6 +68,35 @@
   @media (max-width: 720px) {
     #hint { display: none; }
   }
+
+  /* 手势控制面板：右下角可开关，摄像头下方实时显示识别到的手势 */
+  #hand-ui { position: fixed; right: 14px; bottom: 14px; z-index: 30; width: 210px;
+    background: rgba(4,16,32,.82); border: 1px solid rgba(80,150,255,.4);
+    border-radius: 12px; padding: 8px; backdrop-filter: blur(8px);
+    box-shadow: 0 6px 24px rgba(0,0,0,.6); display: none; }
+  #hand-ui.on { display: block; }
+  #camv { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block;
+    border-radius: 8px; background: #000; transform: scaleX(-1); }
+  /* 摄像头下方的手势状态提示（华为隔空手势风格） */
+  #hand-status { margin-top: 7px; padding: 6px 8px; border-radius: 7px; text-align: center;
+    font-size: 12px; letter-spacing: .06em; color: #9fe0ff;
+    background: rgba(60,140,255,.12); border: 1px solid rgba(80,160,255,.25);
+    min-height: 18px; line-height: 1.5; transition: background .3s ease, color .3s ease; }
+  #hand-status b { font-weight: 600; }
+  #hand-status.ok { background: rgba(60,220,140,.14); border-color: rgba(80,230,160,.4); color: #a8ffd8; }
+  #hand-status.warn { background: rgba(255,180,60,.14); border-color: rgba(255,190,80,.4); color: #ffd9a0; }
+  #hand-bar { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
+  #hand-tip { flex: 1; font-size: 10.5px; color: rgba(140,190,255,.55); line-height: 1.4; }
+  #hand-toggle { font-size: 11px; padding: 5px 12px; border-radius: 7px; cursor: pointer;
+    border: 1px solid rgba(80,150,255,.5); background: rgba(80,150,255,.14); color: #9fd4ff; }
+  #hand-toggle:active { transform: scale(.95); }
+  /* 右下角常驻悬浮按钮（关闭时显示，点击开启手势） */
+  #hand-open { position: fixed; right: 14px; bottom: 14px; z-index: 31; width: 46px; height: 46px;
+    border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 20px; border: 1px solid rgba(80,150,255,.55); background: rgba(6,20,40,.8);
+    box-shadow: 0 4px 16px rgba(0,0,0,.5); color: #9fd4ff; }
+  #hand-open:active { transform: scale(.92); }
+  #hand-open.off { display: none; }
 </style>
 </head>
 <body>
@@ -84,7 +113,18 @@
 <div id="ring"></div>
 <div id="cities"></div>
 
-<div id="hint">拖动旋转 · 滚轮缩放 · 转到背面可见太阳</div>
+<div id="hint">拖动旋转 · 滚轮缩放 · 点右下角 ✋ 开启手势控制</div>
+
+<!-- 手势控制面板：摄像头 + 状态提示 + 开关 -->
+<button id="hand-open" title="开启手势控制">✋</button>
+<div id="hand-ui">
+  <video id="camv" autoplay playsinline muted></video>
+  <div id="hand-status">手势控制已关闭</div>
+  <div id="hand-bar">
+    <span id="hand-tip">伸出手掌·移动旋转地球</span>
+    <button id="hand-toggle">关闭</button>
+  </div>
+</div>
 
 <script src="./vendor/topojson-client.min.js"></script>
 <script src="./vendor/d3-array.min.js"></script>
@@ -304,9 +344,9 @@ let baseHSL = { h: 0, s: 0, l: 0 };
 new THREE.Color('#3aa8ff').getHSL(baseHSL);
 const _c = new THREE.Color();
 
-/* 陆地：统一蓝色小点（不随纬度变化，全陆一致） */
+/* 陆地：统一白色小点（不随纬度变化，全陆一致） */
 function landColor() {
-  return _c.setHSL(baseHSL.h, 0.95, 0.56);
+  return _c.setHSL(0, 0, 0.92);
 }
 function oceanColor() {
   return _c.setHSL((baseHSL.h + 0.03) % 1, 0.85, 0.22);
@@ -640,9 +680,9 @@ function buildCities() {
       p.multiplyScalar(L);
       pos.push(p.x, p.y, p.z);
 
-      /* 暖金 → 核心偏白，外缘偏橙 */
+      /* 霓虹绿灯光 → 核心偏亮绿白，外缘偏深绿 */
       const w = Math.random();
-      c.setHSL(0.105 - w * 0.028, 0.85 - w * 0.30, 0.60 + (1 - Math.random()) * 0.28);
+      c.setHSL(0.33, 0.90 - w * 0.30, 0.58 + (1 - Math.random()) * 0.30);
       col.push(c.r, c.g, c.b);
       siz.push(0.70 + Math.random() * 0.95);
       pha.push(Math.random());
@@ -855,15 +895,26 @@ function updateCityLabels() {
 
 const clock = new THREE.Clock();
 let spinY = 0, uiTick = 0;
+/* 手势控制累积旋转：手往哪移，地球就同向转到哪 */
+let gestYaw = 0, gestPitch = 0;
+/* 手势识别相关变量（提前声明，避免 animate 首帧 TDZ） */
+const MP_VER = '0.4.1675469240';
+const handUI = $('hand-ui'), camv = $('camv'), handOpen = $('hand-open'),
+      handToggle = $('hand-toggle'), handStatus = $('hand-status');
+let handOn = false, handCam = null, handModel = null;
+let prevCX = null, prevCY = null, prevArea = null;
+let handPresent = false, handGesture = 'none', lastGestText = '';
 
 function animate() {
   requestAnimationFrame(animate);
   const dt = clock.getDelta();
   const t  = clock.getElapsedTime();
   controls.update();
+  updateHandStatus();
 
-  /* 固定朝向：地球不自转（取消自动旋转），仅保留用户手动拖动视角 */
-  spinner.rotation.y = spinY;
+  /* 固定朝向：地球不自转（取消自动旋转），仅保留用户手动拖动与手势控制视角 */
+  spinner.rotation.y = spinY + gestYaw;
+  tilt.rotation.x = gestPitch;
 
   surfMat.uniforms.uTime.value  = t;
   fogMat.uniforms.uTime.value   = t;
@@ -908,6 +959,128 @@ window.addEventListener('resize', () => {
   if (starfield) starfield.material.uniforms.uPixelRatio.value = pr;
   updateRing();
 });
+
+/* ── 手势识别（MediaPipe Hands）：手掌移动 → 地球同向旋转 + 实时状态提示 ── */
+
+function handStatusSet(html, cls) {
+  handStatus.innerHTML = html;
+  handStatus.classList.remove('ok', 'warn');
+  if (cls) handStatus.classList.add(cls);
+}
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = src; s.crossOrigin = 'anonymous';
+    s.onload = res; s.onerror = () => rej(new Error('加载失败 ' + src));
+    document.head.appendChild(s);
+  });
+}
+/* 手势判定：统计伸直的手指（食/中/无名/小指），拇指不计避免误判 */
+function detectGesture(lm) {
+  const tip = [8, 12, 16, 20], pip = [6, 10, 14, 18];
+  const w = lm[0];
+  let ext = 0;
+  for (let i = 0; i < 4; i++) {
+    const t = lm[tip[i]], p = lm[pip[i]];
+    const dt = Math.hypot(t.x - w.x, t.y - w.y);
+    const dp = Math.hypot(p.x - w.x, p.y - w.y);
+    if (dt > dp * 1.15) ext++;
+  }
+  if (ext >= 3) return 'palm';
+  if (ext === 1) return 'point';
+  if (ext === 0) return 'fist';
+  return 'half';
+}
+function onHandResults(res) {
+  const lm = res.multiHandLandmarks && res.multiHandLandmarks[0];
+  if (!lm) { handPresent = false; handGesture = 'none'; prevCX = prevCY = prevArea = null; return; }
+  handPresent = true;
+  handGesture = detectGesture(lm);
+
+  const base = [0, 5, 9, 13, 17];
+  let cx = 0, cy = 0;
+  for (const i of base) { cx += lm[i].x; cy += lm[i].y; }
+  cx /= base.length; cy /= base.length;
+  const area = Math.hypot(lm[0].x - lm[9].x, lm[0].y - lm[9].y);
+
+  if (handGesture === 'palm' && prevCX !== null) {
+    const dx = cx - prevCX;   // 手右移 → 画面 x 减小（dx<0，前置流镜像）
+    const dy = cy - prevCY;   // 手下移 → y 增大（dy>0）
+    /* 同向控制（实测校准）：手往哪移，地球表面就往哪转。
+       垂直：rotation.x 为正时正面内容向上走（从下到上）；
+            手往下(dy>0)要表面从上到下 → pitch 取负号 */
+    if (Math.abs(dx) > 0.007 || Math.abs(dy) > 0.007) {
+      gestYaw   += dx * 3.2;
+      gestPitch -= dy * 3.2;
+      gestPitch = THREE.MathUtils.clamp(gestPitch, -1.25, 1.25);
+    }
+    /* 前推/后拉：手掌尺度变大 → 拉近（放大），变小 → 拉远（缩小） */
+    if (prevArea !== null) {
+      const da = area - prevArea;
+      if (Math.abs(da) > 0.015) {
+        const dist = camera.position.distanceTo(controls.target);
+        const nd = THREE.MathUtils.clamp(dist * (1 - da * 8), controls.minDistance, controls.maxDistance);
+        camera.position.sub(controls.target).multiplyScalar(nd / dist).add(controls.target);
+      }
+    }
+  }
+  prevCX = cx; prevCY = cy; prevArea = area;
+}
+function updateHandStatus() {
+  let txt = '', cls = '';
+  if (!handOn) { txt = '手势控制已关闭'; }
+  else if (!handPresent) { txt = '未检测到手，请伸入镜头'; cls = 'warn'; }
+  else if (handGesture === 'palm') { txt = '✋ 手掌 · 移动旋转地球'; cls = 'ok'; }
+  else if (handGesture === 'fist') { txt = '✊ 握拳 · 旋转锁定'; cls = 'warn'; }
+  else if (handGesture === 'point') { txt = '☝️ 单指 · 旋转中'; cls = 'ok'; }
+  else { txt = '🖐️ 半握 · 张开手掌控制'; cls = 'warn'; }
+  if (txt !== lastGestText) {
+    lastGestText = txt;
+    handStatusSet('<b>' + txt + '</b>', cls);
+  }
+}
+async function enableHands() {
+  if (handOn) return;
+  handOn = true;
+  handOpen.classList.add('off');
+  handUI.classList.add('on');
+  handStatusSet('正在加载手势识别模型…');
+  try {
+    if (typeof window.Hands === 'undefined')
+      await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/hands@' + MP_VER + '/hands.js');
+    if (typeof window.Camera === 'undefined')
+      await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@' + MP_VER + '/camera_utils.js');
+    if (typeof window.Hands === 'undefined') throw new Error('MediaPipe 未就绪');
+    handModel = new window.Hands({
+      locateFile: (f) => 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@' + MP_VER + '/' + f
+    });
+    handModel.setOptions({ maxNumHands: 1, modelComplexity: 0,
+      minDetectionConfidence: 0.6, minTrackingConfidence: 0.55 });
+    handModel.onResults(onHandResults);
+    handCam = new window.Camera(camv, {
+      onFrame: async () => { try { await handModel.send({ image: camv }); } catch (e) {} },
+      width: 320, height: 240
+    });
+    await handCam.start();
+    handStatusSet('✋ 伸出<strong>手掌</strong>开始控制');
+  } catch (e) {
+    console.warn('[Hands] 手势启动失败', e);
+    handStatusSet('手势启动失败：' + (e && e.message ? e.message : e), 'warn');
+    handOn = false;
+  }
+}
+function disableHands() {
+  handOn = false;
+  if (handCam) { try { handCam.stop(); } catch (e) {} handCam = null; }
+  if (handModel) { try { handModel.close(); } catch (e) {} handModel = null; }
+  if (camv.srcObject) { try { camv.srcObject.getTracks().forEach(t => t.stop()); } catch (e) {} }
+  handUI.classList.remove('on');
+  handOpen.classList.remove('off');
+  lastGestText = '';
+  handStatusSet('手势控制已关闭');
+}
+handOpen.addEventListener('click', enableHands);
+handToggle.addEventListener('click', () => { handOn ? disableHands() : enableHands(); });
 
 /* 备用判定：d3.geoContains（真实球面几何，单次约 39ms）。
    注意：world-atlas 的 land-10m 环缠绕方向与 d3 的球面约定不一致，
