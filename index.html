@@ -60,35 +60,39 @@
     box-shadow: 0 0 8px rgba(255,190,110,.9); }
   .city.on { opacity: 1; color: rgba(255,232,186,.92); }
 
-  /* 手势识别摄像头小窗：左下角显示，下方实时更新识别到的手势 */
-  #hand-cam-wrap { position: fixed; left: 14px; bottom: 14px; z-index: 30; width: 168px;
-    background: rgba(4,16,32,.55); border: 1px solid rgba(80,150,255,.30);
-    border-radius: 12px; padding: 5px 5px 4px; backdrop-filter: blur(8px);
-    box-shadow: 0 6px 24px rgba(0,0,0,.45); pointer-events: none; }
-  #camv { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block;
-    border-radius: 8px; background: #000; transform: scaleX(-1); }
-  /* 手势指示球（华为隔空手势风格）：摄像头正下方白色圆球，实时显示当前手势图标 + 置信度弧光 */
-  #gest-bubble { position: absolute; left: 50%; margin-left: -38px; bottom: -44px;
-    width: 76px; height: 76px; border-radius: 50%; z-index: 35;
-    background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.98), rgba(242,247,255,.86) 55%, rgba(212,226,248,.92));
-    box-shadow: 0 6px 20px rgba(0,0,0,.38), 0 0 0 3px rgba(255,255,255,.30), inset 0 -3px 8px rgba(120,150,210,.28);
+  /* 摄像头：屏幕外隐藏运行（不显示任何视频窗口） */
+  #camv { position: fixed; left: -9999px; top: 0; width: 320px; height: 240px;
+    opacity: 0; pointer-events: none; transform: scaleX(-1); }
+
+  /* 手势指示球（华为 Mate 80 隔空手势风格）：从屏幕顶部摄像头下方弹出，
+     白色圆球实时显示当前手势 SVG 图标 + 置信度弧光 */
+  #gest-bubble { position: fixed; left: 50%; top: 42px; margin-left: -42px;
+    width: 84px; height: 84px; border-radius: 50%; z-index: 40;
+    background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.98), rgba(242,247,255,.88) 55%, rgba(214,228,250,.94));
+    box-shadow: 0 8px 26px rgba(0,0,0,.42), 0 0 0 3px rgba(255,255,255,.32), inset 0 -4px 10px rgba(120,150,210,.30);
     display: flex; align-items: center; justify-content: center;
-    transition: box-shadow .3s ease; }
+    opacity: 0; transform: translateY(-26px) scale(.72);
+    transition: opacity .38s cubic-bezier(.22,1,.36,1), transform .38s cubic-bezier(.22,1,.36,1), box-shadow .3s ease; }
+  /* 弹出：加载/识别到手时从摄像头下滑出 */
+  #gest-bubble.pop { opacity: 1; transform: translateY(0) scale(1); }
   /* 置信度弧光：conic-gradient 按识别置信度填充（0%→360%） */
-  #gest-bubble .arc { position: absolute; inset: -5px; border-radius: 50%; pointer-events: none;
+  #gest-bubble .arc { position: absolute; inset: -6px; border-radius: 50%; pointer-events: none;
     background: conic-gradient(rgba(80,190,255,.95) var(--arc, 0%), rgba(80,190,255,.12) 0);
     -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
             mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
     transition: background .25s ease; }
-  #gest-ico { font-size: 38px; line-height: 1; user-select: none;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,.28)); transition: transform .15s ease; }
+  #gest-ico { width: 54px; height: 54px; display: flex; align-items: center; justify-content: center;
+    user-select: none; transition: transform .15s ease, opacity .3s ease; }
+  #gest-ico svg { width: 100%; height: 100%; display: block;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,.25)); }
   /* 未检测到手：图标变灰缩小 */
-  #gest-bubble.idle #gest-ico { opacity: .4; transform: scale(.82); filter: grayscale(1) drop-shadow(0 2px 4px rgba(0,0,0,.2)); }
-  #gest-bubble.idle { box-shadow: 0 6px 20px rgba(0,0,0,.38), 0 0 0 3px rgba(255,255,255,.14), inset 0 -3px 8px rgba(120,150,210,.2); }
+  #gest-bubble.idle #gest-ico { opacity: .38; transform: scale(.8); }
+  #gest-bubble.idle #gest-ico svg { filter: grayscale(1) drop-shadow(0 2px 4px rgba(0,0,0,.18)); }
+  #gest-bubble.idle { box-shadow: 0 8px 26px rgba(0,0,0,.42), 0 0 0 3px rgba(255,255,255,.15), inset 0 -4px 10px rgba(120,150,210,.22); }
   /* 识别成功：轻微呼吸脉冲 */
   #gest-bubble.ok { animation: bubblePulse 1.2s ease-in-out infinite; }
-  @keyframes bubblePulse { 0%,100% { box-shadow: 0 6px 20px rgba(0,0,0,.38), 0 0 0 3px rgba(255,255,255,.30), inset 0 -3px 8px rgba(120,150,210,.28), 0 0 18px rgba(120,200,255,.35); }
-    50% { box-shadow: 0 6px 20px rgba(0,0,0,.38), 0 0 0 3px rgba(255,255,255,.30), inset 0 -3px 8px rgba(120,150,210,.28), 0 0 30px rgba(120,200,255,.6); } }
+  @keyframes bubblePulse { 0%,100% { box-shadow: 0 8px 26px rgba(0,0,0,.42), 0 0 0 3px rgba(255,255,255,.32), inset 0 -4px 10px rgba(120,150,210,.30), 0 0 20px rgba(120,200,255,.38); }
+    50% { box-shadow: 0 8px 26px rgba(0,0,0,.42), 0 0 0 3px rgba(255,255,255,.32), inset 0 -4px 10px rgba(120,150,210,.30), 0 0 34px rgba(120,200,255,.64); } }
   /* 加载/切换：旋转小弧 */
   #gest-bubble.busy .arc { animation: arcSpin 1s linear infinite; background: conic-gradient(rgba(160,210,255,.9) 25%, rgba(160,210,255,.1) 0); }
   @keyframes arcSpin { to { transform: rotate(360deg); } }
@@ -108,13 +112,11 @@
 <div id="ring"></div>
 <div id="cities"></div>
 
-<!-- 手势摄像头小窗：下方白色圆球实时显示识别到的手势（华为隔空手势风格） -->
-<div id="hand-cam-wrap">
-  <video id="camv" autoplay playsinline muted></video>
-  <div id="gest-bubble" class="busy">
-    <i class="arc"></i>
-    <span id="gest-ico">🖐️</span>
-  </div>
+<!-- 手势摄像头（屏幕外隐藏运行）+ 顶部白色手势指示球（华为隔空手势风格） -->
+<video id="camv" autoplay playsinline muted></video>
+<div id="gest-bubble" class="busy">
+  <i class="arc"></i>
+  <div id="gest-ico"></div>
 </div>
 
 <script src="./vendor/topojson-client.min.js"></script>
@@ -959,15 +961,18 @@ window.addEventListener('resize', () => {
 const GEST_WASM = './vendor/mediapipe/wasm';
 const GEST_MODEL = './vendor/mediapipe/gesture_recognizer.task';
 const GEST_LABELS = {
-  Open_Palm: { name: '张开手掌', ico: '✋' }, Closed_Fist: { name: '握拳', ico: '✊' },
-  Pointing_Up: { name: '食指上指', ico: '☝️' }, Thumb_Up: { name: '点赞', ico: '👍' },
-  Thumb_Down: { name: '拇指向下', ico: '👎' }, Victory: { name: '剪刀手', ico: '✌️' },
-  ILoveYou: { name: '我爱你', ico: '🤟' }
+  Open_Palm: { name: '张开手掌' }, Closed_Fist: { name: '握拳' },
+  Pointing_Up: { name: '食指上指' }, Thumb_Up: { name: '点赞' },
+  Thumb_Down: { name: '拇指向下' }, Victory: { name: '剪刀手' },
+  ILoveYou: { name: '我爱你' }
 };
+/* Twemoji 彩色 SVG 手势图标（来自 farewell 图标库收录的 jdecked/twemoji） */
 const GEST_ICONS = {
-  Open_Palm: '✋', Closed_Fist: '✊', Pointing_Up: '☝️', Thumb_Up: '👍',
-  Thumb_Down: '👎', Victory: '✌️', ILoveYou: '🤟'
+  Open_Palm: '270b', Closed_Fist: '270a', Victory: '270c', Thumb_Up: '1f44d',
+  Thumb_Down: '1f44e', Pointing_Up: '261d', ILoveYou: '1f91f'
 };
+const GEST_IDLE_ICON = '1f590'; // 🖐️ 张开手（未识别到手时显示）
+const GEST_ICON_DIR = './vendor/gesture-icons/';
 function setGestStatus(txt, cls) {
   const s = (cls || '') + '|' + txt;
   if (s === lastStatus) return;
@@ -975,19 +980,26 @@ function setGestStatus(txt, cls) {
   gestBubbleEl.classList.remove('ok', 'warn', 'idle', 'busy');
   if (cls) gestBubbleEl.classList.add(cls);
 }
-/* 白色手势指示球：更新图标 + 置信度弧光 + 状态类（华为隔空手势风格） */
+/* 注入 Twemoji SVG 图标（本地文件，直接 fetch 后嵌入，避免 emoji 字体丑陋） */
+function setGestIcon(code) {
+  const target = GEST_ICON_DIR + code + '.svg';
+  fetch(target).then(r => r.ok ? r.text() : Promise.reject()).then(svg => {
+    gestIcoEl.innerHTML = svg;
+  }).catch(() => {});
+}
+/* 白色手势指示球：更新 SVG 图标 + 置信度弧光 + 弹出动画（华为 Mate 80 隔空手势风格） */
 function updateGestBubble(gesture, conf) {
   if (gesture && gesture !== 'none' && gesture !== 'unknown') {
-    gestIcoEl.textContent = GEST_ICONS[gesture] || '🫱';
+    setGestIcon(GEST_ICONS[gesture] || GEST_IDLE_ICON);
     const pct = Math.max(0, Math.min(1, conf || 0)) * 360;
     gestBubbleEl.style.setProperty('--arc', pct.toFixed(0) + 'deg');
     gestBubbleEl.classList.remove('idle', 'busy');
-    gestBubbleEl.classList.add('ok');
+    gestBubbleEl.classList.add('ok', 'pop');
   } else {
-    gestIcoEl.textContent = '🖐️';
+    setGestIcon(GEST_IDLE_ICON);
     gestBubbleEl.style.setProperty('--arc', '0deg');
     gestBubbleEl.classList.remove('ok', 'busy');
-    gestBubbleEl.classList.add('idle');
+    gestBubbleEl.classList.add('idle', 'pop');
   }
 }
 function onGestureResult(res) {
