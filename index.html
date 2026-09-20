@@ -354,13 +354,13 @@ const VERT = `
   void main() {
     int si = int(aSeg);
     vec3 handPos;
-    if (si == 17) {
+    if (si == 21) {
       /* 掌心圆盘：以掌心虚拟点(21)为中心，在 XY 平面铺实心圆盘（正对屏幕） */
       vec3 C = uJoints[21];
       float ang2 = aAngle * 6.28318;
-      float r2 = aRadius * uSegR[17];
-      float zT = (aT - 0.5) * 0.30;
-      handPos = C + vec3(cos(ang2) * r2, sin(ang2) * r2, zT * uSegR[17] * 0.6);
+      float r2 = aRadius * uSegR[21];
+      float zT = (aT - 0.5) * 0.42;
+      handPos = C + vec3(cos(ang2) * r2, sin(ang2) * r2, zT * uSegR[21] * 0.8);
     } else {
       vec3 A = uJoints[int(uSegA[si])];
       vec3 B = uJoints[int(uSegB[si])];
@@ -371,7 +371,9 @@ const VERT = `
       vec3 side = normalize(cross(dir, up));
       vec3 up2 = cross(side, dir);
       float ang = aAngle * 6.28318;
-      vec3 off = (cos(ang)*side + sin(ang)*up2) * (aRadius * uSegR[si]);
+      /* 手指锥度：根部粗(aT=0) → 指尖细(aT=1)，接近真手指 */
+      float taper = mix(1.0, 0.55, aT);
+      vec3 off = (cos(ang)*side + sin(ang)*up2) * (aRadius * uSegR[si] * taper);
       handPos = A + dir * (aT * len) + off;
     }
 
@@ -386,7 +388,8 @@ const VERT = `
     vec3 handC = vec3(0.98, 0.90, 0.80) + vec3(0.0, 0.02, 0.10) * aT;
     tint = mix(tint, handC, uMorph * 0.55);
     vColor = aColor * tint;
-    gl_PointSize = size * uSizeScale * uPixelRatio * (9.0 / -mvPosition.z);
+    /* 手形时粒子放大：手更致密饱满（地球时保持原尺寸） */
+    gl_PointSize = size * (1.0 + uMorph * 0.6) * uSizeScale * uPixelRatio * (9.0 / -mvPosition.z);
     gl_Position  = projectionMatrix * mvPosition;
   }
 `;
@@ -473,19 +476,28 @@ function makePoints(pos, col, siz, mat, extra) {
   return new THREE.Points(g, mat);
 }
 
-/* ── 手形骨骼段定义（MediaPipe 21 关键点 → 18 段：16 指节 + 腕部 + 掌心盘）──
+/* ── 手形骨骼段定义（MediaPipe 21 关键点 → 22 段：20 指节 + 腕 + 掌心盘）──
    每段 [起点关键点, 终点关键点, 半径, 权重]；权重用于按体积分配粒子。
    索引：0=腕 1-4=拇指 5-8=食指 9-12=中指 13-16=无名指 17-20=小指，21=掌心虚拟点
-   掌心盘(段17)：特殊段，以掌心21为中心在 xy 平面铺实心圆盘，撑起手掌肉感 */
-const PALM_SEG = 17;   // 掌心圆盘段索引（shader 特殊处理）
+   关键改进：每根手指从「掌心虚拟点(21)」伸出（新增 [21,指根] 连接段），
+   手指根埋进掌心盘 → 手指与手掌连成一体，不再是悬空骨架；
+   同时手指半径全部加粗，更接近真实手指 */
+const PALM_SEG = 21;   // 掌心圆盘段索引（shader 特殊处理）
 const HAND_SEGMENTS = [
-  [0,1,0.16,1],[1,2,0.15,1],[2,3,0.13,1],[3,4,0.11,1],     // 拇指
-  [5,6,0.19,1],[6,7,0.17,1],[7,8,0.14,1],                  // 食指（从指根）
-  [9,10,0.20,1],[10,11,0.18,1],[11,12,0.15,1],             // 中指
-  [13,14,0.18,1],[14,15,0.16,1],[15,16,0.13,1],            // 无名指
-  [17,18,0.16,1],[18,19,0.14,1],[19,20,0.12,1],            // 小指
-  [0,21,0.22,1],                                           // 腕→掌心
-  [21,21,0.60,6]                                           // 掌心圆盘（特殊）
+  /* 拇指：掌→拇指根(1) 再沿拇指到指尖 */
+  [21,1,0.20,1],[1,2,0.18,1],[2,3,0.15,1],[3,4,0.13,1],
+  /* 食指 */
+  [21,5,0.24,1],[5,6,0.21,1],[6,7,0.18,1],[7,8,0.15,1],
+  /* 中指 */
+  [21,9,0.26,1],[9,10,0.23,1],[10,11,0.20,1],[11,12,0.17,1],
+  /* 无名指 */
+  [21,13,0.22,1],[13,14,0.20,1],[14,15,0.17,1],[15,16,0.14,1],
+  /* 小指 */
+  [21,17,0.20,1],[17,18,0.18,1],[18,19,0.15,1],[19,20,0.13,1],
+  /* 腕→掌心 */
+  [0,21,0.30,1],
+  /* 掌心圆盘（特殊）：加大直径，盖住所有指根 */
+  [21,21,1.00,8]
 ];
 /* 预计算各段的粒子分配权重（权重 × 段近似体积） */
 const HAND_SEG_WEIGHTS = (() => {
@@ -906,6 +918,8 @@ const clock = new THREE.Clock();
 let spinY = 0, uiTick = 0;
 /* 手势控制累积旋转：手往哪移，地球就同向转到哪 */
 let gestYaw = 0, gestPitch = 0;
+/* 手势拖拽 EMA 平滑：消除单帧抖动，防幅度过大 */
+let smoothDX = 0, smoothDY = 0;
 /* 手势识别相关变量（提前声明，避免 animate 首帧 TDZ） */
 const camv = $('camv');
 const gestBubbleEl = $('gest-bubble');
@@ -1068,8 +1082,8 @@ function updateHandJoints(lm) {
   for (const i of [5, 9, 13, 17]) {
     pr += Math.hypot(lm[i].x - px, lm[i].y - py);
   }
-  pr = (pr / 4) * S * 1.35;
-  surfMat.uniforms.uSegR.value[17] = Math.max(0.35, pr);
+  pr = (pr / 4) * S * 1.8;
+  surfMat.uniforms.uSegR.value[21] = Math.max(0.55, pr);
 }
 /* 是否触发地球变形：任意识别到的手势都触发（张掌/握拳/比耶/点赞/食指/拇指向下/我爱你…）
    仅当手完全离开（onGestureResult 里 !lm 分支）才流回地球 */
@@ -1111,22 +1125,31 @@ function onGestureResult(res) {
   const p0 = lm[0], p9 = lm[9];
   const area = Math.hypot(p0.x - p9.x, p0.y - p9.y);
 
-  /* 非重点手势（变形时不旋转）：张开手掌/其他手势 = 拖动旋转 + 推拉缩放 */
-  if (!isMorphGesture(handGesture) && (handGesture === 'Open_Palm') && prevCX !== null) {
-    const dx = cx - prevCX;   // 手右移 → 画面 x 减小（前置流镜像）
-    const dy = cy - prevCY;   // 手下移 → y 增大
-    if (Math.abs(dx) > 0.007 || Math.abs(dy) > 0.007) {
-      gestYaw   += dx * 3.2;
-      gestPitch -= dy * 3.2;
-      gestPitch = THREE.MathUtils.clamp(gestPitch, -1.25, 1.25);
-    }
-    if (prevArea !== null) {
-      const da = area - prevArea;
-      if (Math.abs(da) > 0.015) {
-        const dist = camera.position.distanceTo(controls.target);
-        const nd = THREE.MathUtils.clamp(dist * (1 - da * 8), controls.minDistance, controls.maxDistance);
-        camera.position.sub(controls.target).multiplyScalar(nd / dist).add(controls.target);
-      }
+  /* 张掌时：拖拽旋转 + 推拉缩放（手形跟随，但可拖动换视角）。
+     修正：前置摄像头是镜像画面（手往左移 → cx 减小），
+     让「手往哪移地球就往哪转」：gestYaw -= dx（正负号对齐直觉）；
+     加死区防抖 + EMA 平滑防幅度过大 */
+  if (handGesture === 'Open_Palm' && prevCX !== null && prevCY !== null) {
+    const rawDX = cx - prevCX;
+    const rawDY = cy - prevCY;
+    const dead  = 0.012;        // 死区：小于此位移忽略（防手抖）
+    const K     = 1.6;          // 增益：原3.2 → 1.6，幅度更可控
+    let ddx = 0, ddy = 0;
+    if (Math.abs(rawDX) > dead) ddx = rawDX > 0 ? rawDX - dead : rawDX + dead;
+    if (Math.abs(rawDY) > dead) ddy = rawDY > 0 ? rawDY - dead : rawDY + dead;
+    /* EMA 平滑：单帧抖动只贡献 30%，轨迹更稳 */
+    smoothDX = smoothDX * 0.7 + ddx * 0.3;
+    smoothDY = smoothDY * 0.7 + ddy * 0.3;
+    gestYaw   -= smoothDX * K;  // 手往左移(负x) → 地球往左转(负yaw)
+    gestPitch -= smoothDY * K;
+    gestPitch = THREE.MathUtils.clamp(gestPitch, -1.25, 1.25);
+  }
+  if (prevArea !== null) {
+    const da = area - prevArea;
+    if (Math.abs(da) > 0.02) {
+      const dist = camera.position.distanceTo(controls.target);
+      const nd = THREE.MathUtils.clamp(dist * (1 - da * 6), controls.minDistance, controls.maxDistance);
+      camera.position.sub(controls.target).multiplyScalar(nd / dist).add(controls.target);
     }
   }
   prevCX = cx; prevCY = cy; prevArea = area;
