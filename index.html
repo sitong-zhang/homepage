@@ -338,7 +338,7 @@ function oceanColor() {
 const VERT = `
   attribute float size;
   attribute vec3  aColor;
-  attribute float aSeg;      // 骨骼段索引 0..22
+  attribute float aSeg;      // 骨骼段索引 0..26（21=掌心多边形 22-25=指蹼）
   attribute float aT;        // 段内位置 0..1（指根→指尖）
   attribute float aAngle;    // 绕骨轴角度 0..1
   attribute float aRadius;   // 距骨轴半径比例 0..1
@@ -347,20 +347,41 @@ const VERT = `
   uniform float uEmissive;
   uniform float uMorph;      // 0=地球  1=手形
   uniform vec3  uJoints[22]; // 21 个手部关键点 + 1 个掌心虚拟点
-  uniform float uSegA[23];   // 每段起点关键点索引
-  uniform float uSegB[23];   // 每段终点关键点索引
-  uniform float uSegR[23];   // 每段半径
+  uniform float uSegA[26];   // 每段起点关键点索引
+  uniform float uSegB[26];   // 每段终点关键点索引
+  uniform float uSegR[26];   // 每段半径
   varying vec3  vColor;
   void main() {
     int si = int(aSeg);
     vec3 handPos;
-    if (si == 17) {
-      /* 掌心圆盘：以掌心虚拟点(21)为中心，在 XY 平面铺实心圆盘（正对屏幕） */
+    if (si == 21) {
+      /* 掌心多边形掌面：以掌心(21)为中心，腕(0)+拇指根(1)+四指根(5,9,13,17)
+         围成手掌轮廓（非圆形！），6 个三角扇区均匀铺满 → 实心掌面无圆圈 */
       vec3 C = uJoints[21];
-      float ang2 = aAngle * 6.28318;
-      float r2 = aRadius * uSegR[17];
-      float zT = (aT - 0.5) * 0.30;
-      handPos = C + vec3(cos(ang2) * r2, sin(ang2) * r2, zT * uSegR[17] * 0.6);
+      vec3 c0 = uJoints[0];   // 腕
+      vec3 c1 = uJoints[1];   // 拇指根
+      vec3 c2 = uJoints[5];   // 食指根
+      vec3 c3 = uJoints[9];   // 中指根
+      vec3 c4 = uJoints[13];  // 无名指根
+      vec3 c5 = uJoints[17];  // 小指根
+      float f  = aAngle * 6.0;
+      if (f >= 6.0) f -= 6.0;
+      int sec = int(f);
+      vec3 A, B;
+      if (sec == 0) { A = c0; B = c1; }
+      else if (sec == 1) { A = c1; B = c2; }
+      else if (sec == 2) { A = c2; B = c3; }
+      else if (sec == 3) { A = c3; B = c4; }
+      else if (sec == 4) { A = c4; B = c5; }
+      else { A = c5; B = c0; }
+      float r = sqrt(aRadius);
+      float v = aT;
+      vec3 base = mix(C, A, r);
+      vec3 edge = mix(C, B, r);
+      vec3 p2  = mix(base, edge, v);
+      /* 微鼓丘：中心略鼓、边缘平，沿 z 向前后各 0.15（手有肉感但不变圆） */
+      float dome = (1.0 - aRadius) * 0.30 + 0.06;
+      handPos = p2 + vec3(0.0, 0.0, (dome - 0.5) * 0.30);
     } else {
       vec3 A = uJoints[int(uSegA[si])];
       vec3 B = uJoints[int(uSegB[si])];
@@ -371,7 +392,16 @@ const VERT = `
       vec3 side = normalize(cross(dir, up));
       vec3 up2 = cross(side, dir);
       float ang = aAngle * 6.28318;
-      vec3 off = (cos(ang)*side + sin(ang)*up2) * (aRadius * uSegR[si]);
+      /* 手指锥度：根部粗(aT=0) → 指尖细(aT=1)，接近真手 */
+      float taper = mix(1.0, 0.52, aT);
+      /* 指蹼段(22-25)：手指根部的肉膜，垂直压扁 → 手掌连成一体 */
+      float flat = 1.0;
+      if (si >= 22) {
+        flat = 0.34;
+        taper = 0.90;
+      }
+      vec3 off = cos(ang)*side    * (aRadius * uSegR[si] * taper)
+               + sin(ang)*up2*flat * (aRadius * uSegR[si] * taper);
       handPos = A + dir * (aT * len) + off;
     }
 
@@ -385,8 +415,16 @@ const VERT = `
     /* 手形时混入暖白辉光，强化切换感 */
     vec3 handC = vec3(0.98, 0.90, 0.80) + vec3(0.0, 0.02, 0.10) * aT;
     tint = mix(tint, handC, uMorph * 0.55);
+    /* 陆地粒子(白色, aColor 三个分量接近相等且高亮)保持纯白不被夜蓝染色：
+       当 aColor 是白色(亮度>0.8 且近似无色)时，tint 直接用 1.0 —— 白色陆地始终可见 */
+    float lum = max(aColor.r, max(aColor.g, aColor.b));
+    float chroma = max(abs(aColor.r - aColor.g), max(abs(aColor.g - aColor.b), abs(aColor.b - aColor.r)));
+    float isWhiteLand = step(0.8, lum) * step(0.02, 1.0 - chroma);
+    tint = mix(tint, vec3(1.0), isWhiteLand);
     vColor = aColor * tint;
-    gl_PointSize = size * uSizeScale * uPixelRatio * (9.0 / -mvPosition.z);
+    /* 手形时粒子放大：手更致密饱满（地球时保持原尺寸） */
+    float handBoost = 1.0 + uMorph * 1.4;
+    gl_PointSize = size * handBoost * uSizeScale * uPixelRatio * (9.0 / -mvPosition.z);
     gl_Position  = projectionMatrix * mvPosition;
   }
 `;
@@ -442,7 +480,7 @@ scene.add(tilt);
 const surfMat = new THREE.ShaderMaterial({
   uniforms: { uPixelRatio:{value:renderer.getPixelRatio()}, uSizeScale:{value:1}, uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()}, uEmissive:{value:0.85},
     uMorph:{value:0}, uJoints:{value:new Array(22).fill(0).map(() => new THREE.Vector3(0,0,0))},
-    uSegA:{value:new Float32Array(23)}, uSegB:{value:new Float32Array(23)}, uSegR:{value:new Float32Array(23)} },
+    uSegA:{value:new Float32Array(26)}, uSegB:{value:new Float32Array(26)}, uSegR:{value:new Float32Array(26)} },
   vertexShader: VERT, fragmentShader: FRAG,
   transparent: true, depthWrite: true, depthTest: true, blending: THREE.NormalBlending
 });
@@ -473,19 +511,37 @@ function makePoints(pos, col, siz, mat, extra) {
   return new THREE.Points(g, mat);
 }
 
-/* ── 手形骨骼段定义（MediaPipe 21 关键点 → 18 段：16 指节 + 腕部 + 掌心盘）──
+/* ── 手形骨骼段定义（MediaPipe 21 关键点 → 26 段：20 指节 + 4 指蹼 + 腕 + 掌心多边形）──
    每段 [起点关键点, 终点关键点, 半径, 权重]；权重用于按体积分配粒子。
    索引：0=腕 1-4=拇指 5-8=食指 9-12=中指 13-16=无名指 17-20=小指，21=掌心虚拟点
-   掌心盘(段17)：特殊段，以掌心21为中心在 xy 平面铺实心圆盘，撑起手掌肉感 */
-const PALM_SEG = 17;   // 掌心圆盘段索引（shader 特殊处理）
+   关键改进：
+   ① 所有手指从掌心虚拟点(21)伸出 —— 手指与手掌连成一体，不再从空中转弯
+   ② 相邻指根之间加「指蹼」段(22-25) —— 把手指根部连成一片肉掌，消除骨架感
+   ③ 手指半径加粗 —— 更接近真实手指的饱满 */
+const PALM_SEG = 21;   // 掌心多边形段索引（shader 特殊处理）
+const WEB_SEGS  = [
+  [1,5,0.17,0.6],   // 拇指根↔食指根（虎口）
+  [5,9,0.22,0.9],   // 食指根↔中指根
+  [9,13,0.22,0.9],  // 中指根↔无名指根
+  [13,17,0.20,0.8]  // 无名指根↔小指根
+];
 const HAND_SEGMENTS = [
-  [0,1,0.16,1],[1,2,0.15,1],[2,3,0.13,1],[3,4,0.11,1],     // 拇指
-  [5,6,0.19,1],[6,7,0.17,1],[7,8,0.14,1],                  // 食指（从指根）
-  [9,10,0.20,1],[10,11,0.18,1],[11,12,0.15,1],             // 中指
-  [13,14,0.18,1],[14,15,0.16,1],[15,16,0.13,1],            // 无名指
-  [17,18,0.16,1],[18,19,0.14,1],[19,20,0.12,1],            // 小指
-  [0,21,0.22,1],                                           // 腕→掌心
-  [21,21,0.60,6]                                           // 掌心圆盘（特殊）
+  /* 拇指：从掌心(21)伸向拇指根(1)，再沿拇指伸向指尖 */
+  [21,1,0.20,1],[1,2,0.18,1],[2,3,0.15,1],[3,4,0.12,1],
+  /* 食指 */
+  [21,5,0.24,1],[5,6,0.21,1],[6,7,0.18,1],[7,8,0.14,1],
+  /* 中指 */
+  [21,9,0.26,1],[9,10,0.23,1],[10,11,0.20,1],[11,12,0.16,1],
+  /* 无名指 */
+  [21,13,0.22,1],[13,14,0.20,1],[14,15,0.17,1],[15,16,0.13,1],
+  /* 小指 */
+  [21,17,0.20,1],[17,18,0.18,1],[18,19,0.15,1],[19,20,0.12,1],
+  /* 腕→掌心 */
+  [0,21,0.30,1],
+  /* 掌心多边形（特殊） */
+  [21,21,0.80,8],
+  /* 指蹼：相邻指根之间的肉质连接段（把手指根部连成肉掌） */
+  ...WEB_SEGS
 ];
 /* 预计算各段的粒子分配权重（权重 × 段近似体积） */
 const HAND_SEG_WEIGHTS = (() => {
@@ -906,6 +962,8 @@ const clock = new THREE.Clock();
 let spinY = 0, uiTick = 0;
 /* 手势控制累积旋转：手往哪移，地球就同向转到哪 */
 let gestYaw = 0, gestPitch = 0;
+/* 手势拖拽平滑（EMA 防抖） */
+let smoothDX = 0, smoothDY = 0;
 /* 手势识别相关变量（提前声明，避免 animate 首帧 TDZ） */
 const camv = $('camv');
 const gestBubbleEl = $('gest-bubble');
@@ -1033,6 +1091,11 @@ function updateGestBubble(gesture, conf) {
    - 锚点跟随手在画面中的位置移动（等级2：轻微平移跟随） */
 function updateHandJoints(lm) {
   const J = surfMat.uniforms.uJoints.value;
+  /* NaN 防护：任一关键点含 NaN/Infinity 就跳过本帧，避免手形坐标 NaN 导致整个球消失 */
+  for (let i = 0; i < 21; i++) {
+    const p = lm[i];
+    if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y) || !Number.isFinite(p.z)) return false;
+  }
   /* 手掌中心锚点（跟随手移动） */
   let ax = 0, ay = 0, az = 0;
   for (const i of [0, 5, 9, 13, 17]) { ax += lm[i].x; ay += lm[i].y; az += lm[i].z; }
@@ -1049,27 +1112,28 @@ function updateHandJoints(lm) {
     const p = lm[i];
     const x = (p.x - ax) * S;
     const y = (ay - p.y) * S;         // 翻转 MediaPipe 的 y 向下 → 世界 y 向上
-    const z = (az - p.z) * S * HAND_Z_SCALE;
+    /* z 方向只做轻微前后层次（clamp 防止 MediaPipe 深度异常被 S 放大后粒子飞散出屏） */
+    const z = THREE.MathUtils.clamp((az - p.z) * S * HAND_Z_SCALE, -0.85, 0.85);
     J[i].set(x, y, z);
   }
 
-  /* 掌心虚拟点(21)：四个指根(5,9,13,17)的平均，作为掌心圆盘中心 */
+  /* 掌心虚拟点(21)：四个指根(5,9,13,17)的平均，作为掌心多边形中心 */
   let px = 0, py = 0, pz = 0;
   for (const i of [5, 9, 13, 17]) { px += lm[i].x; py += lm[i].y; pz += lm[i].z; }
   px /= 4; py /= 4; pz /= 4;
   J[21].set(
     (px - ax) * S,
     (ay - py) * S,
-    (pz - az) * S * HAND_Z_SCALE
+    THREE.MathUtils.clamp((pz - az) * S * HAND_Z_SCALE, -0.85, 0.85)
   );
-  /* 掌心盘半径：随手指实际大小动态缩放 —— 四个指根到掌心的平均距离 × 1.35，
-     保证手掌大小始终与手指匹配（手大掌大、手小掌小，比例自然） */
+  /* 掌心多边形范围：四个指根到掌心的平均距离 × 1.5（掌面要盖住手指根部） */
   let pr = 0;
   for (const i of [5, 9, 13, 17]) {
     pr += Math.hypot(lm[i].x - px, lm[i].y - py);
   }
-  pr = (pr / 4) * S * 1.35;
-  surfMat.uniforms.uSegR.value[17] = Math.max(0.35, pr);
+  pr = (pr / 4) * S * 1.5;
+  surfMat.uniforms.uSegR.value[21] = Math.max(0.45, pr);
+  return true;
 }
 /* 是否触发地球变形：任意识别到的手势都触发（张掌/握拳/比耶/点赞/食指/拇指向下/我爱你…）
    仅当手完全离开（onGestureResult 里 !lm 分支）才流回地球 */
@@ -1097,8 +1161,14 @@ function onGestureResult(res) {
   setGestStatus(label.name + ' ' + conf.toFixed(0) + '%', 'ok');
   updateGestBubble(handGesture, g ? g.score : 0);
 
-  /* 实时更新手形关节坐标（所有手势都更新，保证手形实时跟手） */
-  updateHandJoints(lm);
+  /* 实时更新手形关节坐标（所有手势都更新，保证手形实时跟手）。
+     返回 false 表示本帧数据无效（uJoints 未更新），此时不触发变形，
+     避免粒子飞向全 0 原点导致球塌缩消失 */
+  const ok = updateHandJoints(lm);
+  if (!ok) {
+    updateGestBubble('none', 0);
+    return;
+  }
 
   /* 有手 → 地球溶解成手形（任意手势） */
   morphTarget = 1;
@@ -1111,22 +1181,30 @@ function onGestureResult(res) {
   const p0 = lm[0], p9 = lm[9];
   const area = Math.hypot(p0.x - p9.x, p0.y - p9.y);
 
-  /* 非重点手势（变形时不旋转）：张开手掌/其他手势 = 拖动旋转 + 推拉缩放 */
-  if (!isMorphGesture(handGesture) && (handGesture === 'Open_Palm') && prevCX !== null) {
-    const dx = cx - prevCX;   // 手右移 → 画面 x 减小（前置流镜像）
-    const dy = cy - prevCY;   // 手下移 → y 增大
-    if (Math.abs(dx) > 0.007 || Math.abs(dy) > 0.007) {
-      gestYaw   += dx * 3.2;
-      gestPitch -= dy * 3.2;
-      gestPitch = THREE.MathUtils.clamp(gestPitch, -1.25, 1.25);
-    }
-    if (prevArea !== null) {
-      const da = area - prevArea;
-      if (Math.abs(da) > 0.015) {
-        const dist = camera.position.distanceTo(controls.target);
-        const nd = THREE.MathUtils.clamp(dist * (1 - da * 8), controls.minDistance, controls.maxDistance);
-        camera.position.sub(controls.target).multiplyScalar(nd / dist).add(controls.target);
-      }
+  /* 张掌：拖拽旋转 + 推拉缩放（修正方向、降增益、加死区、平滑防抖）
+     前置摄像头为镜像画面：用户手往左移 → cx 减小。
+     地球旋转方向与手平移方向相反取反后一致（手往左转，地球向左转） */
+  if (handGesture === 'Open_Palm' && prevCX !== null) {
+    const rawDX = cx - prevCX;
+    const rawDY = cy - prevCY;
+    const dead  = 0.015;        // 死区：小于此位移忽略（防抖动）
+    const K     = 1.2;          // 增益：原3.2 → 1.2，幅度更可控
+    let ddx = 0, ddy = 0;
+    if (Math.abs(rawDX) > dead) ddx = rawDX > 0 ? rawDX - dead : rawDX + dead;
+    if (Math.abs(rawDY) > dead) ddy = rawDY > 0 ? rawDY - dead : rawDY + dead;
+    /* EMA 平滑：消除单帧抖动 */
+    smoothDX = smoothDX * 0.7 + ddx * 0.3;
+    smoothDY = smoothDY * 0.7 + ddy * 0.3;
+    gestYaw   -= smoothDX * K;  // 注意：方向取反（手往左=负x=地球往左转）
+    gestPitch -= smoothDY * K;
+    gestPitch = THREE.MathUtils.clamp(gestPitch, -1.25, 1.25);
+  }
+  if (prevArea !== null) {
+    const da = area - prevArea;
+    if (Math.abs(da) > 0.02) {
+      const dist = camera.position.distanceTo(controls.target);
+      const nd = THREE.MathUtils.clamp(dist * (1 - da * 6), controls.minDistance, controls.maxDistance);
+      camera.position.sub(controls.target).multiplyScalar(nd / dist).add(controls.target);
     }
   }
   prevCX = cx; prevCY = cy; prevArea = area;
