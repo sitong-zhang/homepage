@@ -350,17 +350,43 @@ function oceanColor() {
 const VERT = `
   attribute float size;
   attribute vec3  aColor;
+  attribute float aSeg;      // 骨骼段索引 0..22
+  attribute float aT;        // 段内位置 0..1（指根→指尖）
+  attribute float aAngle;    // 绕骨轴角度 0..1
+  attribute float aRadius;   // 距骨轴半径比例 0..1
   uniform float uPixelRatio, uSizeScale;
   uniform vec3  uLightDir;
-  uniform float uEmissive;   // 夜侧自发光强度（陆地微弱发光，内部雾几乎不发光）
+  uniform float uEmissive;
+  uniform float uMorph;      // 0=地球  1=手形
+  uniform vec3  uJoints[21]; // 21 个手部关键点
+  uniform float uSegA[23];   // 每段起点关键点索引
+  uniform float uSegB[23];   // 每段终点关键点索引
+  uniform float uSegR[23];   // 每段半径
   varying vec3  vColor;
   void main() {
-    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-    vec3 n = normalize(mat3(modelMatrix) * normalize(position));
+    int si = int(aSeg);
+    vec3 A = uJoints[int(uSegA[si])];
+    vec3 B = uJoints[int(uSegB[si])];
+    vec3 axis = B - A;
+    float len = length(axis);
+    vec3 dir = axis / max(len, 0.0001);
+    vec3 up = abs(dir.y) < 0.99 ? vec3(0.0,1.0,0.0) : vec3(1.0,0.0,0.0);
+    vec3 side = normalize(cross(dir, up));
+    vec3 up2 = cross(side, dir);
+    float ang = aAngle * 6.28318;
+    vec3 off = (cos(ang)*side + sin(ang)*up2) * (aRadius * uSegR[si]);
+    vec3 handPos = A + dir * (aT * len) + off;
+
+    vec3 morphed = mix(position, handPos, uMorph);
+
+    vec4 mvPosition = modelViewMatrix * vec4(morphed, 1.0);
+    vec3 n = normalize(mat3(modelMatrix) * normalize(morphed));
     float sun = smoothstep(-0.08, 0.55, dot(n, uLightDir));
-    /* 夜侧底色 = 极暗环境光 + 自发光（陆地蓝点微微发亮） */
     vec3 nightC = vec3(0.07, 0.09, 0.15) + vec3(0.26, 0.34, 0.55) * uEmissive;
     vec3 tint = mix(nightC, vec3(1.0, 0.97, 0.92), sun);
+    /* 手形时混入暖白辉光，强化切换感 */
+    vec3 handC = vec3(0.98, 0.90, 0.80) + vec3(0.0, 0.02, 0.10) * aT;
+    tint = mix(tint, handC, uMorph * 0.55);
     vColor = aColor * tint;
     gl_PointSize = size * uSizeScale * uPixelRatio * (9.0 / -mvPosition.z);
     gl_Position  = projectionMatrix * mvPosition;
@@ -416,7 +442,9 @@ tilt.add(spinner);
 scene.add(tilt);
 
 const surfMat = new THREE.ShaderMaterial({
-  uniforms: { uPixelRatio:{value:renderer.getPixelRatio()}, uSizeScale:{value:1}, uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()}, uEmissive:{value:0.85} },
+  uniforms: { uPixelRatio:{value:renderer.getPixelRatio()}, uSizeScale:{value:1}, uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()}, uEmissive:{value:0.85},
+    uMorph:{value:0}, uJoints:{value:new Array(21).fill(0).map(() => new THREE.Vector3(0,0,0))},
+    uSegA:{value:new Float32Array(23)}, uSegB:{value:new Float32Array(23)}, uSegR:{value:new Float32Array(23)} },
   vertexShader: VERT, fragmentShader: FRAG,
   transparent: true, depthWrite: true, depthTest: true, blending: THREE.NormalBlending
 });
@@ -432,14 +460,53 @@ const mistMat = new THREE.ShaderMaterial({
 });
 /* （外层防护罩已改为半透明蓝色球壳，见 buildShell；不再使用粒子雾壳） */
 
-function makePoints(pos, col, siz, mat) {
+function makePoints(pos, col, siz, mat, extra) {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setAttribute('aColor',   new THREE.Float32BufferAttribute(col, 3));
   g.setAttribute('size',     new THREE.Float32BufferAttribute(siz, 1));
+  if (extra) {
+    g.setAttribute('aSeg',    new THREE.Float32BufferAttribute(extra.seg, 1));
+    g.setAttribute('aT',      new THREE.Float32BufferAttribute(extra.t, 1));
+    g.setAttribute('aAngle',  new THREE.Float32BufferAttribute(extra.angle, 1));
+    g.setAttribute('aRadius', new THREE.Float32BufferAttribute(extra.radius, 1));
+  }
   g.computeBoundingSphere();
   return new THREE.Points(g, mat);
 }
+
+/* ── 手形骨骼段定义（MediaPipe 21 关键点 → 23 根骨骼段）──────────────
+   每段 [起点关键点, 终点关键点, 半径, 权重]；权重用于按体积分配粒子。
+   索引：0=腕 1-4=拇指 5-8=食指 9-12=中指 13-16=无名指 17-20=小指 */
+const HAND_SEGMENTS = [
+  [0,1,0.13,1],[1,2,0.13,1],[2,3,0.11,1],[3,4,0.09,1],   // 拇指
+  [0,5,0.14,1],[5,6,0.13,1],[6,7,0.11,1],[7,8,0.09,1],   // 食指
+  [0,9,0.14,1],[9,10,0.13,1],[10,11,0.11,1],[11,12,0.09,1], // 中指
+  [0,13,0.13,1],[13,14,0.12,1],[14,15,0.10,1],[15,16,0.08,1], // 无名指
+  [0,17,0.12,1],[17,18,0.11,1],[18,19,0.09,1],[19,20,0.08,1], // 小指
+  [5,9,0.32,2],[9,13,0.32,2],[13,17,0.30,2]              // 手掌横向填充
+];
+/* 预计算各段的粒子分配权重（权重 × 段近似体积） */
+const HAND_SEG_WEIGHTS = (() => {
+  const w = HAND_SEGMENTS.map(s => s[3]);
+  const sum = w.reduce((a, b) => a + b, 0);
+  let acc = 0;
+  return w.map(x => { const v = acc; acc += x / sum; return v; }).concat([1]);
+})();
+function pickHandSegment() {
+  const r = Math.random();
+  for (let i = 0; i < HAND_SEGMENTS.length; i++) {
+    if (r < HAND_SEG_WEIGHTS[i + 1]) return i;
+  }
+  return HAND_SEGMENTS.length - 1;
+}
+/* 初始化着色器的 uSegA/uSegB/uSegR */
+(function initSegUniforms() {
+  const A = surfMat.uniforms.uSegA.value, B = surfMat.uniforms.uSegB.value, R = surfMat.uniforms.uSegR.value;
+  for (let i = 0; i < HAND_SEGMENTS.length; i++) {
+    A[i] = HAND_SEGMENTS[i][0]; B[i] = HAND_SEGMENTS[i][1]; R[i] = HAND_SEGMENTS[i][2];
+  }
+})();
 
 function buildInterior() {
   const R = CFG.radius, col = new THREE.Color();
@@ -524,6 +591,7 @@ async function buildSurface(N) {
   building = true;
   const R = CFG.radius;
   const pos = [], col = [], siz = [];
+  const seg = [], tarr = [], angarr = [], radarr = [];
   let landCount = 0, oceanCount = 0;
 
   for (let i = 0; i < N; i++) {
@@ -547,10 +615,16 @@ async function buildSurface(N) {
     col.push(c.r, c.g, c.b);
     /* 陆地：大小一致的蓝色小点；海洋：较小且略随机 */
     siz.push(isLand ? 0.50 : 0.28 + Math.random() * 0.14);
+
+    /* 手形骨骼归属：随机分配到某根骨骼段，生成圆柱采样参数 */
+    seg.push(pickHandSegment());
+    tarr.push(Math.random());
+    angarr.push(Math.random());
+    radarr.push(Math.sqrt(Math.random())); // 面积均匀，让粒子铺满截面
   }
 
   if (earthPoints) { spinner.remove(earthPoints); earthPoints.geometry.dispose(); }
-  earthPoints = makePoints(pos, col, siz, surfMat);
+  earthPoints = makePoints(pos, col, siz, surfMat, { seg, t: tarr, angle: angarr, radius: radarr });
   spinner.add(earthPoints);
 
   console.log('[Earth] 采样 ' + N + ' 点 · 陆地 ' + landCount + ' · 海洋 ' + oceanCount + ' · 最终 ' + pos.length / 3 + ' 粒子');
@@ -900,6 +974,9 @@ let handOn = false, handModel = null, handDelegate = 'GPU';
 let prevCX = null, prevCY = null, prevArea = null;
 let handPresent = false, handGesture = 'none';
 let lastStatus = '';
+/* 手形 Morph 相关：morphTarget=变形目标(0/1)，uMorph 在 animate 中平滑趋近 */
+let morphTarget = 0;
+const HAND_Z_SCALE = 1.8;   // 深度放大系数（让手指有前后层次）
 
 function animate() {
   requestAnimationFrame(animate);
@@ -915,6 +992,13 @@ function animate() {
   fogMat.uniforms.uTime.value   = t;
   mistMat.uniforms.uTime.value  = t;
   cityMat.uniforms.uTime.value  = t;
+
+  /* 手形 Morph：uMorph 平滑趋近 morphTarget（手到→溶解成手，手离开→流回地球） */
+  const curM = surfMat.uniforms.uMorph.value;
+  const spd  = morphTarget > curM ? 3.2 : 2.2;   // 溶解快、回流稍缓更自然
+  surfMat.uniforms.uMorph.value = THREE.MathUtils.clamp(
+    curM + (morphTarget - curM) * Math.min(1, dt * spd), 0, 1
+  );
 
   if (starfield) { starfield.material.uniforms.uTime.value = t; starfield.rotation.y = t * 0.004; }
   if (sunRef) { const p = 1 + 0.035 * Math.sin(t * 1.1); sunRef.glow.scale.set(80 * p, 80 * p, 1); }
@@ -987,7 +1071,8 @@ function setGestIcon(code) {
     gestIcoEl.innerHTML = svg;
   }).catch(() => {});
 }
-/* 白色手势指示球：更新 SVG 图标 + 置信度弧光 + 弹出动画（华为 Mate 80 隔空手势风格） */
+/* 白色手势指示球：更新 SVG 图标 + 置信度弧光 + 弹出动画（华为 Mate 80 隔空手势风格）
+   有手势 → 弹出显示；无手势 → 缩回顶部 */
 function updateGestBubble(gesture, conf) {
   if (gesture && gesture !== 'none' && gesture !== 'unknown') {
     setGestIcon(GEST_ICONS[gesture] || GEST_IDLE_ICON);
@@ -998,10 +1083,43 @@ function updateGestBubble(gesture, conf) {
   } else {
     setGestIcon(GEST_IDLE_ICON);
     gestBubbleEl.style.setProperty('--arc', '0deg');
-    gestBubbleEl.classList.remove('ok', 'busy');
-    gestBubbleEl.classList.add('idle', 'pop');
+    gestBubbleEl.classList.remove('ok', 'busy', 'pop');   // 移除 pop → 缩回
+    gestBubbleEl.classList.add('idle');
   }
 }
+/* 将 MediaPipe 归一化手部关键点 → 世界坐标，写入 uJoints uniform。
+   手形居中于原点（地球位置），正对屏幕；支持实时跟手：
+   - 用手腕→中指根的实际距离做动态归一化，保证手形大小稳定（不随手远近变化）
+   - x/y 归一化 → 居中放大的世界 XY
+   - z（MediaPipe 相对深度）→ 放大后作为前后层次
+   - 锚点跟随手在画面中的位置移动（等级2：轻微平移跟随） */
+function updateHandJoints(lm) {
+  const J = surfMat.uniforms.uJoints.value;
+  /* 手掌中心锚点（跟随手移动） */
+  let ax = 0, ay = 0, az = 0;
+  for (const i of [0, 5, 9, 13, 17]) { ax += lm[i].x; ay += lm[i].y; az += lm[i].z; }
+  ax /= 5; ay /= 5; az /= 5;
+
+  /* 尺度基准：手腕(0) → 中指根(9) 距离，各手势下相对稳定 */
+  const wx = lm[9].x - lm[0].x, wy = lm[9].y - lm[0].y;
+  const unitLen = Math.max(0.02, Math.hypot(wx, wy));
+  /* 目标：这个距离 = HAND_PALM_LEN 世界单位（约地球半径的 0.7 倍） */
+  const HAND_PALM_LEN = 1.4;
+  const S = HAND_PALM_LEN / unitLen;
+
+  for (let i = 0; i < 21; i++) {
+    const p = lm[i];
+    const x = (p.x - ax) * S;
+    const y = (ay - p.y) * S;         // 翻转 MediaPipe 的 y 向下 → 世界 y 向上
+    const z = (az - p.z) * S * HAND_Z_SCALE;
+    J[i].set(x, y, z);
+  }
+}
+/* 检测到的手势是否为「应触发地球变形」的三个重点手势 */
+function isMorphGesture(g) {
+  return g === 'Open_Palm' || g === 'Closed_Fist' || g === 'Victory';
+}
+
 function onGestureResult(res) {
   const g = res.gestures && res.gestures[0] && res.gestures[0][0];
   const lm = res.landmarks && res.landmarks[0];
@@ -1010,6 +1128,8 @@ function onGestureResult(res) {
     prevCX = prevCY = prevArea = null;
     setGestStatus('idle', 'idle');
     updateGestBubble(null, 0);
+    /* 无手势：白球缩回 + 地球流回原状 */
+    morphTarget = 0;
     return;
   }
   handPresent = true;
@@ -1019,6 +1139,16 @@ function onGestureResult(res) {
   setGestStatus(label.name + ' ' + conf.toFixed(0) + '%', 'ok');
   updateGestBubble(handGesture, g.score || 0);
 
+  /* 实时更新手形关节坐标（所有手势都更新，保证手形实时跟手） */
+  updateHandJoints(lm);
+
+  /* 三个重点手势 → 地球溶解成手形；其余手势 → 流回地球 */
+  if (isMorphGesture(handGesture)) {
+    morphTarget = 1;
+  } else {
+    morphTarget = 0;
+  }
+
   /* 手掌中心：0=腕, 5/9/13/17=指根，平均 → 旋转控制基准 */
   const base = [0, 5, 9, 13, 17];
   let cx = 0, cy = 0;
@@ -1027,8 +1157,8 @@ function onGestureResult(res) {
   const p0 = lm[0], p9 = lm[9];
   const area = Math.hypot(p0.x - p9.x, p0.y - p9.y);
 
-  /* 张开手掌 = 拖动旋转 + 推拉缩放 */
-  if ((handGesture === 'Open_Palm') && prevCX !== null) {
+  /* 非重点手势（变形时不旋转）：张开手掌/其他手势 = 拖动旋转 + 推拉缩放 */
+  if (!isMorphGesture(handGesture) && (handGesture === 'Open_Palm') && prevCX !== null) {
     const dx = cx - prevCX;   // 手右移 → 画面 x 减小（前置流镜像）
     const dy = cy - prevCY;   // 手下移 → y 增大
     if (Math.abs(dx) > 0.007 || Math.abs(dy) > 0.007) {
