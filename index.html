@@ -39,15 +39,6 @@
   #retry.on { display: inline-block; }
   #retry:active { transform: scale(.96); }
 
-  /* 悬浮蓝圈：固定在屏幕正中，不随相机旋转/缩放移动；地球触到它时淡出 */
-  #ring { position: fixed; left: 50%; top: 50%; z-index: 15; pointer-events: none;
-    border-radius: 50%; transform: translate(-50%, -50%);
-    border: 5px solid rgba(96,172,255,.72);
-    box-shadow: 0 0 38px rgba(60,150,255,.38), inset 0 0 38px rgba(60,150,255,.22),
-                0 0 8px rgba(96,172,255,.55);
-    transition: opacity .30s ease; opacity: 0; }
-  #ring.on { opacity: 1; }
-
    /* 城市标签 */
   #cities { position: fixed; inset: 0; z-index: 14; pointer-events: none; overflow: hidden; }
   .city { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); white-space: nowrap;
@@ -108,7 +99,6 @@
   <button id="retry" onclick="location.reload()">重新加载</button>
 </div>
 
-<div id="ring"></div>
 <div id="cities"></div>
 
 <!-- 手势摄像头（屏幕外隐藏运行）+ 顶部白色手势指示球（华为隔空手势风格） -->
@@ -151,8 +141,7 @@ const CFG = {
   moonDist      : 3.4,      // 月球轨道半径（×R）
   moonSpeed     : 0.012,    // 公转角速度 rad/s（很慢）
   cityPer       : 46,       // 每座城市的灯光点数
-  citySpread    : 0.052,    // 城市灯光扩散半径（×R）
-  ringRatio     : 0.34      // 悬浮蓝圈半径 = min(宽,高) × 此值
+  citySpread    : 0.052     // 城市灯光扩散半径（×R）
 };
 
 const SUN_DIR    = new THREE.Vector3(0.60, 0.28, 0.75).normalize();
@@ -377,9 +366,16 @@ const VERT = `
       vec3 c3 = uJoints[9];   // 中指根
       vec3 c4 = uJoints[13];  // 无名指根
       vec3 c5 = uJoints[17];  // 小指根
-      int sec = int(mod(aAngle * 6.0, 6.0));
-      vec3 A = sec == 0 ? c0 : (sec == 1 ? c1 : (sec == 2 ? c2 : (sec == 3 ? c3 : (sec == 4 ? c4 : c5))));
-      vec3 B = sec == 0 ? c1 : (sec == 1 ? c2 : (sec == 2 ? c3 : (sec == 3 ? c4 : (sec == 4 ? c5 : c0))));
+      float f  = aAngle * 6.0;
+      if (f >= 6.0) f -= 6.0;
+      int sec = int(f);
+      vec3 A, B;
+      if (sec == 0) { A = c0; B = c1; }
+      else if (sec == 1) { A = c1; B = c2; }
+      else if (sec == 2) { A = c2; B = c3; }
+      else if (sec == 3) { A = c3; B = c4; }
+      else if (sec == 4) { A = c4; B = c5; }
+      else { A = c5; B = c0; }
       float r = sqrt(aRadius);      // 到中心距离，sqrt 使面内均匀
       float v = aT;                 // 沿边参数
       vec3 base = mix(C, A, r);     // 中心 → 顶点A
@@ -499,7 +495,6 @@ const mistMat = new THREE.ShaderMaterial({
   vertexShader: FOG_VERT, fragmentShader: FOG_FRAG,
   transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending
 });
-/* （外层蓝色防护罩保留，见 buildShell） */
 
 function makePoints(pos, col, siz, mat, extra) {
   const g = new THREE.BufferGeometry();
@@ -605,50 +600,6 @@ function buildInterior() {
   fogPoints  = makePoints(fPos, fCol, fSiz, fogMat);
   mistPoints = makePoints(mPos, mCol, mSiz, mistMat);
   spinner.add(fogPoints); spinner.add(mistPoints);
-}
-
-/* 外层「防护罩」：半透明蓝色球壳（透明蓝罩，带菲涅尔边缘发光）。
-   使用 FrontSide 渲染，罩面正对相机一侧呈淡蓝半透明，边缘（视线擦过球面）
-   因菲涅尔效应更亮，形成清晰的球罩轮廓；不随自转，保持稳定罩感。 */
-let shellMesh = null;
-function buildShell() {
-  const R = CFG.radius;
-  if (!shellMesh) {
-    shellMesh = new THREE.Mesh(
-      new THREE.SphereGeometry(R * 1.20, 64, 48),
-      new THREE.ShaderMaterial({
-        uniforms: {
-          uColor:    { value: new THREE.Color(0x3aa8ff) },
-          uOpacity:  { value: 0.10 },
-          uPower:    { value: 3.6 },
-          uStrength: { value: 0.55 }
-        },
-        vertexShader: `
-          varying vec3 vN;
-          varying vec3 vView;
-          void main() {
-            vN = normalize(normalMatrix * normal);
-            vec4 mv = modelViewMatrix * vec4(position, 1.0);
-            vView = normalize(-mv.xyz);
-            gl_Position = projectionMatrix * mv;
-          }`,
-        fragmentShader: `
-          uniform vec3  uColor;
-          uniform float uOpacity, uPower, uStrength;
-          varying vec3  vN;
-          varying vec3  vView;
-          void main() {
-            float fres = pow(1.0 - abs(dot(normalize(vN), normalize(vView))), uPower);
-            float a = uOpacity + fres * uStrength;
-            a = clamp(a, 0.0, 0.55);
-            gl_FragColor = vec4(uColor, a);
-          }`,
-        transparent: true, blending: THREE.NormalBlending,
-        side: THREE.FrontSide, depthWrite: false
-      })
-    );
-    tilt.add(shellMesh);
-  }
 }
 
 async function buildSurface(N) {
@@ -757,6 +708,7 @@ const CITY_VERT = `
   attribute float phase;
   uniform float uPixelRatio, uSizeScale, uTime;
   uniform vec3  uLightDir;
+  uniform float uMorph;      // 手形变形程度：0=地球 1=手（淡出城市灯）
   varying vec3  vColor; varying float vA;
   void main() {
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
@@ -765,7 +717,8 @@ const CITY_VERT = `
     float night = 1.0 - sun;
     float tw    = 0.80 + 0.20 * sin(uTime * 1.7 + phase * 6.2831);
     vColor = aColor;
-    vA = pow(night, 1.30) * tw;
+    /* 手形时城市灯淡出：避免残留在球面形成刺眼绿团 */
+    vA = pow(night, 1.30) * tw * (1.0 - uMorph);
     gl_PointSize = size * uSizeScale * uPixelRatio * (9.0 / -mvPosition.z);
     gl_Position  = projectionMatrix * mvPosition;
   }`;
@@ -782,7 +735,7 @@ const CITY_FRAG = `
 
 const cityMat = new THREE.ShaderMaterial({
   uniforms: { uPixelRatio:{value:renderer.getPixelRatio()}, uSizeScale:{value:1},
-              uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()} },
+              uTime:{value:0}, uLightDir:{value:SUN_DIR.clone()}, uMorph:{value:0} },
   vertexShader: CITY_VERT, fragmentShader: CITY_FRAG,
   transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending
 });
@@ -962,13 +915,11 @@ function buildStarfield() {
   setProgress('光栅化陆地边界…'); setBar(0.8); await frame();
   landTable = rasterizeLand(got.land);
   buildInterior();
-  buildShell();
   await buildSurface(CFG.targetSamples);
   buildCities();
   buildMoon();
   buildStarfield();
   buildSun();
-  updateRing();
   setBar(1);
 
   const el = $('loading');
@@ -977,23 +928,6 @@ function buildStarfield() {
   /* 手势自动开启：加载完成即启动摄像头手势识别（无需点击，无任何文字） */
   setTimeout(enableHands, 600);
 })();
-
-/* ── 悬浮蓝圈：固定在屏幕中心，地球涨到碰到它时淡出 ─────────── */
-const ringEl = $('ring');
-function ringRadiusPx() {
-  return Math.min(window.innerWidth, window.innerHeight) * CFG.ringRatio;
-}
-function earthRadiusPx() {
-  const d = camera.position.distanceTo(controls.target);
-  const ang = Math.asin(Math.min(0.9995, CFG.radius / Math.max(CFG.radius, d)));
-  return Math.tan(ang) / Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * (window.innerHeight / 2);
-}
-function updateRing() {
-  const r = ringRadiusPx();
-  ringEl.style.width  = (r * 2).toFixed(1) + 'px';
-  ringEl.style.height = (r * 2).toFixed(1) + 'px';
-  ringEl.classList.toggle('on', earthRadiusPx() < r - 4);
-}
 
 /* ── 城市标签投影：只在面向相机 + 夜侧时浮现，并做防重叠剔除 ── */
 const _cw = new THREE.Vector3(), _cn = new THREE.Vector3();
@@ -1067,6 +1001,12 @@ function animate() {
   surfMat.uniforms.uMorph.value = THREE.MathUtils.clamp(
     curM + (morphTarget - curM) * Math.min(1, dt * spd), 0, 1
   );
+  /* 手形变形时：城市灯光/内部雾不参与变形，会残留在球面上形成刺眼的绿团/白团，
+     随 uMorph 平滑淡出；回流成地球时恢复 */
+  const m = surfMat.uniforms.uMorph.value;
+  cityMat.uniforms.uMorph.value  = m;
+  fogMat.uniforms.uOpacity.value = 0.16 * (1.0 - m);
+  mistMat.uniforms.uOpacity.value = 0.10 * (1.0 - m);
 
   if (starfield) { starfield.material.uniforms.uTime.value = t; starfield.rotation.y = t * 0.004; }
   if (sunRef) { const p = 1 + 0.035 * Math.sin(t * 1.1); sunRef.glow.scale.set(80 * p, 80 * p, 1); }
@@ -1085,7 +1025,6 @@ function animate() {
   if ((uiTick++ & 1) === 0) {
     spinner.updateMatrixWorld(true);
     updateCityLabels();
-    updateRing();
   }
 
   composer.render();
@@ -1104,7 +1043,6 @@ window.addEventListener('resize', () => {
   mistMat.uniforms.uPixelRatio.value  = pr;
   cityMat.uniforms.uPixelRatio.value  = pr;
   if (starfield) starfield.material.uniforms.uPixelRatio.value = pr;
-  updateRing();
 });
 
 /* ── 手势识别（Google MediaPipe GestureRecognizer，官方 tasks-vision）
