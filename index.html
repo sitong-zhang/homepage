@@ -60,9 +60,20 @@
     box-shadow: 0 0 8px rgba(255,190,110,.9); }
   .city.on { opacity: 1; color: rgba(255,232,186,.92); }
 
-  /* 手势识别摄像头：屏幕外隐藏运行（不显示任何窗口/按钮/文字） */
-  #camv { position: fixed; left: -9999px; top: 0; width: 320px; height: 240px;
-    opacity: 0; pointer-events: none; object-fit: cover; }
+  /* 手势识别摄像头小窗：左下角显示，下方实时更新识别到的手势 */
+  #hand-cam-wrap { position: fixed; left: 14px; bottom: 14px; z-index: 30; width: 168px;
+    background: rgba(4,16,32,.55); border: 1px solid rgba(80,150,255,.30);
+    border-radius: 12px; padding: 5px 5px 4px; backdrop-filter: blur(8px);
+    box-shadow: 0 6px 24px rgba(0,0,0,.45); pointer-events: none; }
+  #camv { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block;
+    border-radius: 8px; background: #000; transform: scaleX(-1); }
+  /* 手势状态条：摄像头正下方，实时显示识别到的手势与置信度（可读可看） */
+  #gest-status { margin-top: 5px; padding: 4px 6px; border-radius: 7px; text-align: center;
+    font-size: 11.5px; letter-spacing: .03em; font-weight: 600; min-height: 20px; line-height: 1.5;
+    color: rgba(160,200,255,.9); background: rgba(40,90,160,.18);
+    border: 1px solid rgba(80,160,255,.28); transition: background .3s ease, color .3s ease; }
+  #gest-status.ok  { background: rgba(60,220,140,.16); border-color: rgba(80,230,160,.4); color: #a8ffd8; }
+  #gest-status.warn{ background: rgba(255,180,60,.16); border-color: rgba(255,190,80,.4); color: #ffd9a0; }
 </style>
 </head>
 <body>
@@ -79,7 +90,11 @@
 <div id="ring"></div>
 <div id="cities"></div>
 
-<video id="camv" autoplay playsinline muted></video>
+<!-- 手势摄像头小窗：下方实时显示识别到的手势 -->
+<div id="hand-cam-wrap">
+  <video id="camv" autoplay playsinline muted></video>
+  <div id="gest-status">手势识别加载中…</div>
+</div>
 
 <script src="./vendor/topojson-client.min.js"></script>
 <script src="./vendor/d3-array.min.js"></script>
@@ -853,11 +868,12 @@ let spinY = 0, uiTick = 0;
 /* 手势控制累积旋转：手往哪移，地球就同向转到哪 */
 let gestYaw = 0, gestPitch = 0;
 /* 手势识别相关变量（提前声明，避免 animate 首帧 TDZ） */
-const MP_VER = '0.4.1675469240';
 const camv = $('camv');
-let handOn = false, handModel = null;
+const gestStatusEl = $('gest-status');
+let handOn = false, handModel = null, handDelegate = 'GPU';
 let prevCX = null, prevCY = null, prevArea = null;
 let handPresent = false, handGesture = 'none';
+let lastStatus = '';
 
 function animate() {
   requestAnimationFrame(animate);
@@ -913,7 +929,15 @@ window.addEventListener('resize', () => {
   updateRing();
 });
 
-/* ── 手势识别（MediaPipe Hands）：后台静默运行，手掌移动 → 地球同向旋转 ── */
+/* ── 手势识别（Google MediaPipe GestureRecognizer，官方 tasks-vision）
+   最高星标/最权威手势识别方案：官方手势模型识别 7 种手势 + 置信度，
+   远优于旧版手工判定手指伸展的方法 ── */
+const GEST_WASM = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm';
+const GEST_MODEL = 'https://storage.googleapis.com/mediapipe-models/gesture_recognizer/gesture_recognizer/float16/1/gesture_recognizer.task';
+const GEST_LABELS = {
+  Open_Palm: '张开手掌 ✋', Closed_Fist: '握拳 ✊', Pointing_Up: '食指上指 ☝️',
+  Thumb_Up: '点赞 👍', Thumb_Down: '拇指向下 👎', Victory: '剪刀手 ✌️', ILoveYou: '我爱你 🤟'
+};
 function loadScript(src) {
   return new Promise((res, rej) => {
     const s = document.createElement('script');
@@ -922,46 +946,46 @@ function loadScript(src) {
     document.head.appendChild(s);
   });
 }
-/* 手势判定：统计伸直的手指（食/中/无名/小指），拇指不计避免误判 */
-function detectGesture(lm) {
-  const tip = [8, 12, 16, 20], pip = [6, 10, 14, 18];
-  const w = lm[0];
-  let ext = 0;
-  for (let i = 0; i < 4; i++) {
-    const t = lm[tip[i]], p = lm[pip[i]];
-    const dt = Math.hypot(t.x - w.x, t.y - w.y);
-    const dp = Math.hypot(p.x - w.x, p.y - w.y);
-    if (dt > dp * 1.15) ext++;
-  }
-  if (ext >= 3) return 'palm';
-  if (ext === 1) return 'point';
-  if (ext === 0) return 'fist';
-  return 'half';
+function setGestStatus(txt, cls) {
+  const s = (cls || '') + '|' + txt;
+  if (s === lastStatus) return;
+  lastStatus = s;
+  gestStatusEl.innerHTML = txt;
+  gestStatusEl.classList.remove('ok', 'warn');
+  if (cls) gestStatusEl.classList.add(cls);
 }
-function onHandResults(res) {
-  const lm = res.multiHandLandmarks && res.multiHandLandmarks[0];
-  if (!lm) { handPresent = false; handGesture = 'none'; prevCX = prevCY = prevArea = null; return; }
+function onGestureResult(res) {
+  const g = res.gestures && res.gestures[0] && res.gestures[0][0];
+  const lm = res.landmarks && res.landmarks[0];
+  if (!g || !lm) {
+    handPresent = false; handGesture = 'none';
+    prevCX = prevCY = prevArea = null;
+    setGestStatus('🖐️ 未检测到手', 'warn');
+    return;
+  }
   handPresent = true;
-  handGesture = detectGesture(lm);
+  handGesture = g.categoryName || 'unknown';
+  const conf = (g.score || 0) * 100;
+  const label = GEST_LABELS[handGesture] || (handGesture + ' 🫱');
+  setGestStatus(label + ' <span style="opacity:.75;font-weight:400">' + conf.toFixed(0) + '%</span>', 'ok');
 
+  /* 手掌中心：0=腕, 5/9/13/17=指根，平均 → 旋转控制基准 */
   const base = [0, 5, 9, 13, 17];
   let cx = 0, cy = 0;
   for (const i of base) { cx += lm[i].x; cy += lm[i].y; }
   cx /= base.length; cy /= base.length;
-  const area = Math.hypot(lm[0].x - lm[9].x, lm[0].y - lm[9].y);
+  const p0 = lm[0], p9 = lm[9];
+  const area = Math.hypot(p0.x - p9.x, p0.y - p9.y);
 
-  if (handGesture === 'palm' && prevCX !== null) {
-    const dx = cx - prevCX;   // 手右移 → 画面 x 减小（dx<0，前置流镜像）
-    const dy = cy - prevCY;   // 手下移 → y 增大（dy>0）
-    /* 同向控制（实测校准）：手往哪移，地球表面就往哪转。
-       垂直：rotation.x 为正时正面内容向上走（从下到上）；
-            手往下(dy>0)要表面从上到下 → pitch 取负号 */
+  /* 张开手掌 = 拖动旋转 + 推拉缩放 */
+  if ((handGesture === 'Open_Palm') && prevCX !== null) {
+    const dx = cx - prevCX;   // 手右移 → 画面 x 减小（前置流镜像）
+    const dy = cy - prevCY;   // 手下移 → y 增大
     if (Math.abs(dx) > 0.007 || Math.abs(dy) > 0.007) {
       gestYaw   += dx * 3.2;
       gestPitch -= dy * 3.2;
       gestPitch = THREE.MathUtils.clamp(gestPitch, -1.25, 1.25);
     }
-    /* 前推/后拉：手掌尺度变大 → 拉近（放大），变小 → 拉远（缩小） */
     if (prevArea !== null) {
       const da = area - prevArea;
       if (Math.abs(da) > 0.015) {
@@ -977,39 +1001,60 @@ async function enableHands() {
   if (handOn) return;
   handOn = true;
   try {
-    if (typeof window.Hands === 'undefined')
-      await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/hands@' + MP_VER + '/hands.js');
-    if (typeof window.Hands === 'undefined') throw new Error('MediaPipe 未就绪');
-    handModel = new window.Hands({
-      locateFile: (f) => 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@' + MP_VER + '/' + f
-    });
-    handModel.setOptions({ maxNumHands: 1, modelComplexity: 0,
-      minDetectionConfidence: 0.6, minTrackingConfidence: 0.55 });
-    handModel.onResults(onHandResults);
-    /* 原生摄像头启动（替代易 404 的 camera_utils，兼容手机浏览器） */
+    /* 加载官方 GestureRecognizer UMD 包 + WASM */
+    if (typeof window.FilesetResolver === 'undefined' || typeof window.GestureRecognizer === 'undefined')
+      await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/vision_bundle.js');
+    if (typeof window.GestureRecognizer === 'undefined') throw new Error('GestureRecognizer 未就绪');
+    const fileset = await window.FilesetResolver.forVisionTasks(GEST_WASM);
+    handModel = await window.GestureRecognizer.createFromOptions(
+      fileset, {
+        baseOptions: { modelAssetPath: GEST_MODEL, delegate: handDelegate },
+        runningMode: 'VIDEO',
+        numHands: 1,
+        minHandDetectionConfidence: 0.5,
+        minHandPresenceConfidence: 0.5,
+        minTrackingConfidence: 0.5
+      }
+    );
+    /* 原生摄像头启动（兼容手机浏览器） */
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { width: 320, height: 240, facingMode: 'user' }, audio: false
     });
     camv.srcObject = stream;
     await camv.play().catch(() => {});
-    /* 手动循环送帧给 MediaPipe（requestAnimationFrame 节流） */
-    let sending = false;
+    setGestStatus('🖐️ 手势识别已启动' + (handDelegate === 'CPU' ? '（CPU）' : ''), 'ok');
+    /* 循环送帧识别（VIDEO 模式需时间戳） */
+    let sending = false, lastVideoTime = -1;
     const loop = async () => {
       if (!handOn) return;
-      if (camv.readyState >= 2 && !sending) {
+      if (camv.readyState >= 2 && !sending && camv.currentTime !== lastVideoTime) {
         sending = true;
-        try { await handModel.send({ image: camv }); } catch (e) {}
+        try {
+          lastVideoTime = camv.currentTime;
+          const res = handModel.recognizeForVideo(camv, performance.now());
+          onGestureResult(res);
+        } catch (e) {}
         sending = false;
       }
       requestAnimationFrame(loop);
     };
     loop();
-    console.log('[Hands] 手势识别已启动');
+    console.log('[Hands] GestureRecognizer 已启动 (' + handDelegate + ')');
   } catch (e) {
     console.warn('[Hands] 手势启动失败', e);
+    /* GPU 失败自动降级 CPU 重试（手机 WebGL 不支持 GPU delegate 常见） */
+    if (handDelegate === 'GPU') {
+      if (handModel && handModel.close) { try { handModel.close(); } catch (e2) {} }
+      handModel = null;
+      handDelegate = 'CPU';
+      handOn = false;
+      setGestStatus('GPU 不可用，切换 CPU…', 'warn');
+      setTimeout(() => { if (!handOn) enableHands(); }, 300);
+      return;
+    }
     handOn = false;
-    /* 静默降级：若摄像头需用户手势授权（iOS/部分安卓），
-       监听首次交互自动重试，保证进页面即用手势（无需任何点击） */
+    if (handModel && handModel.close) { try { handModel.close(); } catch (e2) {} handModel = null; }
+    setGestStatus('手势启动失败，重试中…', 'warn');
     const retry = () => {
       window.removeEventListener('pointerdown', retry);
       window.removeEventListener('touchstart', retry);
