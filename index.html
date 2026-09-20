@@ -1062,6 +1062,14 @@ function updateHandJoints(lm) {
     (ay - py) * S,
     (pz - az) * S * HAND_Z_SCALE
   );
+  /* 掌心盘半径：随手指实际大小动态缩放 —— 四个指根到掌心的平均距离 × 1.35，
+     保证手掌大小始终与手指匹配（手大掌大、手小掌小，比例自然） */
+  let pr = 0;
+  for (const i of [5, 9, 13, 17]) {
+    pr += Math.hypot(lm[i].x - px, lm[i].y - py);
+  }
+  pr = (pr / 4) * S * 1.35;
+  surfMat.uniforms.uSegR.value[17] = Math.max(0.35, pr);
 }
 /* 是否触发地球变形：任意识别到的手势都触发（张掌/握拳/比耶/点赞/食指/拇指向下/我爱你…）
    仅当手完全离开（onGestureResult 里 !lm 分支）才流回地球 */
