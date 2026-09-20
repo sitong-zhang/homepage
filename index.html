@@ -855,7 +855,7 @@ let gestYaw = 0, gestPitch = 0;
 /* 手势识别相关变量（提前声明，避免 animate 首帧 TDZ） */
 const MP_VER = '0.4.1675469240';
 const camv = $('camv');
-let handOn = false, handCam = null, handModel = null;
+let handOn = false, handModel = null;
 let prevCX = null, prevCY = null, prevArea = null;
 let handPresent = false, handGesture = 'none';
 
@@ -979,8 +979,6 @@ async function enableHands() {
   try {
     if (typeof window.Hands === 'undefined')
       await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/hands@' + MP_VER + '/hands.js');
-    if (typeof window.Camera === 'undefined')
-      await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@' + MP_VER + '/camera_utils.js');
     if (typeof window.Hands === 'undefined') throw new Error('MediaPipe 未就绪');
     handModel = new window.Hands({
       locateFile: (f) => 'https://cdn.jsdelivr.net/npm/@mediapipe/hands@' + MP_VER + '/' + f
@@ -988,17 +986,30 @@ async function enableHands() {
     handModel.setOptions({ maxNumHands: 1, modelComplexity: 0,
       minDetectionConfidence: 0.6, minTrackingConfidence: 0.55 });
     handModel.onResults(onHandResults);
-    handCam = new window.Camera(camv, {
-      onFrame: async () => { try { await handModel.send({ image: camv }); } catch (e) {} },
-      width: 320, height: 240
+    /* 原生摄像头启动（替代易 404 的 camera_utils，兼容手机浏览器） */
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { width: 320, height: 240, facingMode: 'user' }, audio: false
     });
-    await handCam.start();
+    camv.srcObject = stream;
+    await camv.play().catch(() => {});
+    /* 手动循环送帧给 MediaPipe（requestAnimationFrame 节流） */
+    let sending = false;
+    const loop = async () => {
+      if (!handOn) return;
+      if (camv.readyState >= 2 && !sending) {
+        sending = true;
+        try { await handModel.send({ image: camv }); } catch (e) {}
+        sending = false;
+      }
+      requestAnimationFrame(loop);
+    };
+    loop();
     console.log('[Hands] 手势识别已启动');
   } catch (e) {
     console.warn('[Hands] 手势启动失败', e);
+    handOn = false;
     /* 静默降级：若摄像头需用户手势授权（iOS/部分安卓），
        监听首次交互自动重试，保证进页面即用手势（无需任何点击） */
-    handOn = false;
     const retry = () => {
       window.removeEventListener('pointerdown', retry);
       window.removeEventListener('touchstart', retry);
