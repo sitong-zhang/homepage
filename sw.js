@@ -1,4 +1,4 @@
-const CACHE='zjt-earth-v7';
+const CACHE='zjt-earth-v8';
 const ASSETS=[
 './',
 './vendor/three/build/three.module.js',
@@ -16,7 +16,13 @@ const ASSETS=[
 './vendor/d3-array.min.js',
 './vendor/d3-geo.min.js',
 './vendor/topojson-client.min.js',
-'./vendor/land-10m.json'
+'./vendor/land-10m.json',
+'./vendor/mediapipe/vision_bundle.mjs',
+'./vendor/mediapipe/gesture_recognizer.task',
+'./vendor/mediapipe/wasm/vision_wasm_internal.js',
+'./vendor/mediapipe/wasm/vision_wasm_internal.wasm',
+'./vendor/mediapipe/wasm/vision_wasm_nosimd_internal.js',
+'./vendor/mediapipe/wasm/vision_wasm_nosimd_internal.wasm'
 ];
 self.addEventListener('install',function(e){
   e.waitUntil(caches.open(CACHE).then(function(c){return c.addAll(ASSETS)}).then(function(){return self.skipWaiting()}));
