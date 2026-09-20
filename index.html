@@ -60,43 +60,9 @@
     box-shadow: 0 0 8px rgba(255,190,110,.9); }
   .city.on { opacity: 1; color: rgba(255,232,186,.92); }
 
-  #hint { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%); z-index: 20;
-    color: rgba(130,180,255,.32); font-size: 11.5px; letter-spacing: .18em; pointer-events: none;
-    white-space: nowrap; transition: opacity 1.2s ease 2s; opacity: 0; }
-  #hint.show { opacity: 1; }
-  #hint.gone { opacity: 0 !important; }
-  @media (max-width: 720px) {
-    #hint { display: none; }
-  }
-
-  /* 手势控制面板：右下角可开关，摄像头下方实时显示识别到的手势 */
-  #hand-ui { position: fixed; right: 14px; bottom: 14px; z-index: 30; width: 210px;
-    background: rgba(4,16,32,.82); border: 1px solid rgba(80,150,255,.4);
-    border-radius: 12px; padding: 8px; backdrop-filter: blur(8px);
-    box-shadow: 0 6px 24px rgba(0,0,0,.6); display: none; }
-  #hand-ui.on { display: block; }
-  #camv { width: 100%; aspect-ratio: 4/3; object-fit: cover; display: block;
-    border-radius: 8px; background: #000; transform: scaleX(-1); }
-  /* 摄像头下方的手势状态提示（华为隔空手势风格） */
-  #hand-status { margin-top: 7px; padding: 6px 8px; border-radius: 7px; text-align: center;
-    font-size: 12px; letter-spacing: .06em; color: #9fe0ff;
-    background: rgba(60,140,255,.12); border: 1px solid rgba(80,160,255,.25);
-    min-height: 18px; line-height: 1.5; transition: background .3s ease, color .3s ease; }
-  #hand-status b { font-weight: 600; }
-  #hand-status.ok { background: rgba(60,220,140,.14); border-color: rgba(80,230,160,.4); color: #a8ffd8; }
-  #hand-status.warn { background: rgba(255,180,60,.14); border-color: rgba(255,190,80,.4); color: #ffd9a0; }
-  #hand-bar { display: flex; align-items: center; gap: 8px; margin-top: 7px; }
-  #hand-tip { flex: 1; font-size: 10.5px; color: rgba(140,190,255,.55); line-height: 1.4; }
-  #hand-toggle { font-size: 11px; padding: 5px 12px; border-radius: 7px; cursor: pointer;
-    border: 1px solid rgba(80,150,255,.5); background: rgba(80,150,255,.14); color: #9fd4ff; }
-  #hand-toggle:active { transform: scale(.95); }
-  /* 右下角常驻悬浮按钮（关闭时显示，点击开启手势） */
-  #hand-open { position: fixed; right: 14px; bottom: 14px; z-index: 31; width: 46px; height: 46px;
-    border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
-    font-size: 20px; border: 1px solid rgba(80,150,255,.55); background: rgba(6,20,40,.8);
-    box-shadow: 0 4px 16px rgba(0,0,0,.5); color: #9fd4ff; }
-  #hand-open:active { transform: scale(.92); }
-  #hand-open.off { display: none; }
+  /* 手势识别摄像头：屏幕外隐藏运行（不显示任何窗口/按钮/文字） */
+  #camv { position: fixed; left: -9999px; top: 0; width: 320px; height: 240px;
+    opacity: 0; pointer-events: none; object-fit: cover; }
 </style>
 </head>
 <body>
@@ -113,18 +79,7 @@
 <div id="ring"></div>
 <div id="cities"></div>
 
-<div id="hint">隔空手势控制已开启 · 伸出手掌移动旋转 · 滚轮缩放</div>
-
-<!-- 手势控制面板：摄像头 + 状态提示 + 开关 -->
-<button id="hand-open" title="开启手势控制">✋</button>
-<div id="hand-ui">
-  <video id="camv" autoplay playsinline muted></video>
-  <div id="hand-status">手势控制已关闭</div>
-  <div id="hand-bar">
-    <span id="hand-tip">伸出手掌·移动旋转地球</span>
-    <button id="hand-toggle">关闭</button>
-  </div>
-</div>
+<video id="camv" autoplay playsinline muted></video>
 
 <script src="./vendor/topojson-client.min.js"></script>
 <script src="./vendor/d3-array.min.js"></script>
@@ -837,11 +792,7 @@ function buildStarfield() {
   const el = $('loading');
   el.classList.add('hide');
   setTimeout(() => el.remove(), 1000);
-  $('hint').classList.add('show');
-  setTimeout(() => $('hint').classList.add('gone'), 7000);
-  /* 手势默认开启：加载完成即自动启动摄像头手势交互。
-     若浏览器要求用户手势（如 iOS Safari），自动启动被拦截时
-     ✋ 按钮会重新显示，点击即可手动开启。 */
+  /* 手势自动开启：加载完成即启动摄像头手势识别（无需点击，无任何文字） */
   setTimeout(enableHands, 600);
 })();
 
@@ -903,18 +854,16 @@ let spinY = 0, uiTick = 0;
 let gestYaw = 0, gestPitch = 0;
 /* 手势识别相关变量（提前声明，避免 animate 首帧 TDZ） */
 const MP_VER = '0.4.1675469240';
-const handUI = $('hand-ui'), camv = $('camv'), handOpen = $('hand-open'),
-      handToggle = $('hand-toggle'), handStatus = $('hand-status');
+const camv = $('camv');
 let handOn = false, handCam = null, handModel = null;
 let prevCX = null, prevCY = null, prevArea = null;
-let handPresent = false, handGesture = 'none', lastGestText = '';
+let handPresent = false, handGesture = 'none';
 
 function animate() {
   requestAnimationFrame(animate);
   const dt = clock.getDelta();
   const t  = clock.getElapsedTime();
   controls.update();
-  updateHandStatus();
 
   /* 固定朝向：地球不自转（取消自动旋转），仅保留用户手动拖动与手势控制视角 */
   spinner.rotation.y = spinY + gestYaw;
@@ -964,13 +913,7 @@ window.addEventListener('resize', () => {
   updateRing();
 });
 
-/* ── 手势识别（MediaPipe Hands）：手掌移动 → 地球同向旋转 + 实时状态提示 ── */
-
-function handStatusSet(html, cls) {
-  handStatus.innerHTML = html;
-  handStatus.classList.remove('ok', 'warn');
-  if (cls) handStatus.classList.add(cls);
-}
+/* ── 手势识别（MediaPipe Hands）：后台静默运行，手掌移动 → 地球同向旋转 ── */
 function loadScript(src) {
   return new Promise((res, rej) => {
     const s = document.createElement('script');
@@ -1030,25 +973,9 @@ function onHandResults(res) {
   }
   prevCX = cx; prevCY = cy; prevArea = area;
 }
-function updateHandStatus() {
-  let txt = '', cls = '';
-  if (!handOn) { txt = '手势控制已关闭'; }
-  else if (!handPresent) { txt = '未检测到手，请伸入镜头'; cls = 'warn'; }
-  else if (handGesture === 'palm') { txt = '✋ 手掌 · 移动旋转地球'; cls = 'ok'; }
-  else if (handGesture === 'fist') { txt = '✊ 握拳 · 旋转锁定'; cls = 'warn'; }
-  else if (handGesture === 'point') { txt = '☝️ 单指 · 旋转中'; cls = 'ok'; }
-  else { txt = '🖐️ 半握 · 张开手掌控制'; cls = 'warn'; }
-  if (txt !== lastGestText) {
-    lastGestText = txt;
-    handStatusSet('<b>' + txt + '</b>', cls);
-  }
-}
 async function enableHands() {
   if (handOn) return;
   handOn = true;
-  handOpen.classList.add('off');
-  handUI.classList.add('on');
-  handStatusSet('正在加载手势识别模型…');
   try {
     if (typeof window.Hands === 'undefined')
       await loadScript('https://cdn.jsdelivr.net/npm/@mediapipe/hands@' + MP_VER + '/hands.js');
@@ -1066,32 +993,23 @@ async function enableHands() {
       width: 320, height: 240
     });
     await handCam.start();
-    handStatusSet('✋ 伸出<strong>手掌</strong>开始控制');
+    console.log('[Hands] 手势识别已启动');
   } catch (e) {
     console.warn('[Hands] 手势启动失败', e);
-    /* 手机浏览器常见：摄像头需用户手势触发（iOS Safari / 部分安卓）。
-       自动启动被拦截时恢复 ✋ 按钮，提示用户点击开启。 */
-    const msg = e && e.message ? e.message : String(e);
-    const isPerm = /denied|permission|NotAllowed|not allowed/i.test(msg);
-    handStatusSet(isPerm
-      ? '需授权摄像头：请点下方 ✋ 按钮开启'
-      : '手势启动失败：' + msg, 'warn');
+    /* 静默降级：若摄像头需用户手势授权（iOS/部分安卓），
+       监听首次交互自动重试，保证进页面即用手势（无需任何点击） */
     handOn = false;
-    handOpen.classList.remove('off');
+    const retry = () => {
+      window.removeEventListener('pointerdown', retry);
+      window.removeEventListener('touchstart', retry);
+      window.removeEventListener('keydown', retry);
+      enableHands();
+    };
+    window.addEventListener('pointerdown', retry, { once: true });
+    window.addEventListener('touchstart', retry, { once: true });
+    window.addEventListener('keydown', retry, { once: true });
   }
 }
-function disableHands() {
-  handOn = false;
-  if (handCam) { try { handCam.stop(); } catch (e) {} handCam = null; }
-  if (handModel) { try { handModel.close(); } catch (e) {} handModel = null; }
-  if (camv.srcObject) { try { camv.srcObject.getTracks().forEach(t => t.stop()); } catch (e) {} }
-  handUI.classList.remove('on');
-  handOpen.classList.remove('off');
-  lastGestText = '';
-  handStatusSet('手势控制已关闭');
-}
-handOpen.addEventListener('click', enableHands);
-handToggle.addEventListener('click', () => { handOn ? disableHands() : enableHands(); });
 
 /* 备用判定：d3.geoContains（真实球面几何，单次约 39ms）。
    注意：world-atlas 的 land-10m 环缠绕方向与 d3 的球面约定不一致，
