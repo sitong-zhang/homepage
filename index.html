@@ -943,48 +943,93 @@ const HAND_Z_SCALE = 1.8;   // 深度放大系数（让手指有前后层次）
 
 function animate() {
   requestAnimationFrame(animate);
-  const dt = clock.getDelta();
-  const t  = clock.getElapsedTime();
-  controls.update();
+  try {
+    const dt = clock.getDelta();
+    const t  = clock.getElapsedTime();
+    controls.update();
 
-  /* 固定朝向：地球不自转（取消自动旋转），仅保留用户手动拖动与手势控制视角 */
-  spinner.rotation.y = spinY + gestYaw;
-  tilt.rotation.x = gestPitch;
+    /* 固定朝向：地球不自转（取消自动旋转），仅保留用户手动拖动与手势控制视角 */
+    spinner.rotation.y = spinY + gestYaw;
+    tilt.rotation.x = gestPitch;
 
-  surfMat.uniforms.uTime.value  = t;
-  fogMat.uniforms.uTime.value   = t;
-  mistMat.uniforms.uTime.value  = t;
-  cityMat.uniforms.uTime.value  = t;
+    surfMat.uniforms.uTime.value  = t;
+    fogMat.uniforms.uTime.value   = t;
+    mistMat.uniforms.uTime.value  = t;
+    cityMat.uniforms.uTime.value  = t;
 
-  /* 手形 Morph：uMorph 平滑趋近 morphTarget（手到→溶解成手，手离开→流回地球） */
-  const curM = surfMat.uniforms.uMorph.value;
-  const spd  = morphTarget > curM ? 3.2 : 2.2;   // 溶解快、回流稍缓更自然
-  surfMat.uniforms.uMorph.value = THREE.MathUtils.clamp(
-    curM + (morphTarget - curM) * Math.min(1, dt * spd), 0, 1
-  );
+    /* 手形 Morph：uMorph 平滑趋近 morphTarget（手到→溶解成手，手离开→流回地球） */
+    const curM = surfMat.uniforms.uMorph.value;
+    const spd  = morphTarget > curM ? 3.2 : 2.2;   // 溶解快、回流稍缓更自然
+    surfMat.uniforms.uMorph.value = THREE.MathUtils.clamp(
+      curM + (morphTarget - curM) * Math.min(1, dt * spd), 0, 1
+    );
 
-  if (starfield) { starfield.material.uniforms.uTime.value = t; starfield.rotation.y = t * 0.004; }
-  if (sunRef) { const p = 1 + 0.035 * Math.sin(t * 1.1); sunRef.glow.scale.set(80 * p, 80 * p, 1); }
+    if (starfield) { starfield.material.uniforms.uTime.value = t; starfield.rotation.y = t * 0.004; }
+    if (sunRef) { const p = 1 + 0.035 * Math.sin(t * 1.1); sunRef.glow.scale.set(80 * p, 80 * p, 1); }
 
-  /* 月球缓慢公转；转到离相机过近时收缩淡出，避免糊住画面 */
-  if (moonPivot) {
-    moonPivot.rotation.y += dt * CFG.moonSpeed;
-    moonMesh.getWorldPosition(_cw);
-    const dist = _cw.distanceTo(camera.position);
-    const k = THREE.MathUtils.clamp((dist - 2.6) / 2.2, 0, 1);
-    moonMesh.scale.setScalar(k);
-    moonMesh.visible = k > 0.02;
+    /* 月球缓慢公转；转到离相机过近时收缩淡出，避免糊住画面 */
+    if (moonPivot) {
+      moonPivot.rotation.y += dt * CFG.moonSpeed;
+      moonMesh.getWorldPosition(_cw);
+      const dist = _cw.distanceTo(camera.position);
+      const k = THREE.MathUtils.clamp((dist - 2.6) / 2.2, 0, 1);
+      moonMesh.scale.setScalar(k);
+      moonMesh.visible = k > 0.02;
+    }
+
+    /* UI 层每 2 帧刷新一次即可 */
+    if ((uiTick++ & 1) === 0) {
+      spinner.updateMatrixWorld(true);
+      updateCityLabels();
+    }
+
+    composer.render();
+    /* 心跳记录：每次成功渲染刷新时间戳，供看门狗检测卡死/崩溃 */
+    window.__lastRenderOk = Date.now();
+  } catch (err) {
+    /* 渲染循环兜底：任何一帧异常都不允许整个画面白屏，
+       记录一次并尝试重建 WebGL context（应对 context lost） */
+    if (!window.__renderErrShown) {
+      window.__renderErrShown = true;
+      console.error('[Render] 渲染帧异常:', err);
+      showFatalOverlay('渲染过程出现异常，已尝试恢复。若持续白屏请点击「重新加载」。');
+    }
   }
-
-  /* UI 层每 2 帧刷新一次即可 */
-  if ((uiTick++ & 1) === 0) {
-    spinner.updateMatrixWorld(true);
-    updateCityLabels();
-  }
-
-  composer.render();
 }
 animate();
+
+/* ── 致命错误兜底层：WebGL context lost / 渲染异常时显示可恢复提示，避免纯白屏 ── */
+function showFatalOverlay(msg) {
+  let o = document.getElementById('fatal-ov');
+  if (!o) {
+    o = document.createElement('div');
+    o.id = 'fatal-ov';
+    o.style.cssText = 'position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;' +
+      'align-items:center;justify-content:center;background:rgba(0,2,8,.96);color:#cfe0ff;' +
+      'font:14px/1.7 system-ui,-apple-system,sans-serif;text-align:center;padding:24px;';
+    const t = document.createElement('div');
+    t.textContent = '⚠️ ' + msg;
+    t.style.marginBottom = '18px';
+    const b = document.createElement('button');
+    b.textContent = '重新加载';
+    b.style.cssText = 'padding:10px 28px;font-size:15px;border:1px solid #4d72c8;background:#1a2747;' +
+      'color:#eaf2ff;border-radius:8px;cursor:pointer;';
+    b.onclick = () => location.reload();
+    o.appendChild(t); o.appendChild(b);
+    document.body.appendChild(o);
+  }
+}
+/* WebGL context 丢失（手机切后台/内存回收常见）→ 显示提示而非白屏 */
+if (renderer && renderer.domElement) {
+  renderer.domElement.addEventListener('webglcontextlost', (e) => {
+    e.preventDefault();
+    showFatalOverlay('图形渲染上下文丢失（常见于切后台或内存紧张），请重新加载。');
+  });
+  renderer.domElement.addEventListener('webglcontextrestored', () => {
+    const o = document.getElementById('fatal-ov');
+    if (o) o.style.display = 'none';
+  });
+}
 
 window.addEventListener('resize', () => {
   const w = window.innerWidth, h = window.innerHeight;
@@ -1193,6 +1238,7 @@ async function enableHands() {
     await camv.play().catch(() => {});
     setGestStatus('ready', 'ok');
     updateGestBubble(null, 0);
+    hideCameraOverlay();
     /* 循环送帧识别（VIDEO 模式需时间戳） */
     let sending = false, lastVideoTime = -1;
     const loop = async () => {
@@ -1229,16 +1275,49 @@ async function enableHands() {
     setGestStatus('err', 'warn');
     updateGestBubble(null, 0);
     console.warn('[Hands] 手势启动失败:', msg);
+    /* 摄像头被拒 / 不可用时的可视化提示（原来静默失败，用户误以为"识别不了"） */
+    showCameraOverlay((e && e.name) ? e.name : msg);
     const retry = () => {
       window.removeEventListener('pointerdown', retry);
       window.removeEventListener('touchstart', retry);
       window.removeEventListener('keydown', retry);
+      hideCameraOverlay();
       enableHands();
     };
     window.addEventListener('pointerdown', retry, { once: true });
     window.addEventListener('touchstart', retry, { once: true });
     window.addEventListener('keydown', retry, { once: true });
   }
+}
+
+/* ── 摄像头权限/可用性提示层：浏览器拦截 getUserMedia 时显示清晰指引，避免"静默失败" ── */
+function showCameraOverlay(reason) {
+  let o = document.getElementById('cam-ov');
+  if (!o) {
+    o = document.createElement('div');
+    o.id = 'cam-ov';
+    o.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:60;' +
+      'max-width:90vw;padding:12px 18px;background:rgba(20,32,60,.94);border:1px solid rgba(110,150,230,.4);' +
+      'border-radius:10px;color:#dce8ff;font:13px/1.6 system-ui,sans-serif;' +
+      'box-shadow:0 6px 20px rgba(0,0,0,.4);';
+    o.style.display = 'flex'; o.style.alignItems = 'center'; o.style.gap = '10px';
+    const icon = document.createElement('span'); icon.textContent = '📷'; icon.style.fontSize = '18px';
+    const txt = document.createElement('div');
+    txt.innerHTML = '<b>手势识别未启用</b>：未获得摄像头权限。<br>' +
+      '请在浏览器地址栏 / 权限设置中允许摄像头，然后点下面按钮重试。';
+    const btn = document.createElement('button');
+    btn.textContent = '重试启用手势';
+    btn.style.cssText = 'padding:8px 14px;border:1px solid #4d72c8;background:#1a2747;color:#eaf2ff;' +
+      'border-radius:8px;cursor:pointer;white-space:nowrap;';
+    btn.onclick = () => { hideCameraOverlay(); enableHands(); };
+    o.appendChild(icon); o.appendChild(txt); o.appendChild(btn);
+    document.body.appendChild(o);
+  }
+  o.style.display = 'flex';
+}
+function hideCameraOverlay() {
+  const o = document.getElementById('cam-ov');
+  if (o) o.style.display = 'none';
 }
 
 /* 备用判定：d3.geoContains（真实球面几何，单次约 39ms）。
