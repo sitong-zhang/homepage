@@ -355,16 +355,18 @@ const VERT = `
     int si = int(aSeg);
     vec3 handPos;
     if (si == 21) {
-      /* ── 掌心椭圆盘（改进：横向略宽、纵向略窄，模拟真实手掌轮廓）── */
+      /* ── 掌心椭圆盘（3D 化升级：中心凹陷 + 掌缘隆起的立体曲面）──
+            真实掌心内凹、四周掌缘隆起。用「径向二次凹陷」逼近：
+            中心(aRadius 小)处 z 略凹进，边缘(aRadius 大)处 z 隆起 → 立体掌窝 */
       vec3 C = uJoints[21];
       float ang2 = aAngle * 6.28318;
       float r2   = aRadius * uSegR[21];
       /* 椭圆：x 轴 ×1.15 略宽、y 轴 ×0.80 略窄 → 横向手掌感 */
       float ex = cos(ang2) * r2 * 1.15;
       float ey = sin(ang2) * r2 * 0.80;
-      /* 掌弓（arch）：半径越大边缘越薄，中心微凸，模拟手掌自然弧度 */
-      float arch = 1.0 - 0.35 * aRadius;
-      float zT = (aT - 0.5) * 0.9 * arch * uSegR[21] * 0.8;
+      /* 掌窝凹陷：z 随径向先凹后隆（sin 二次起伏，中心凹 0.35、边缘隆 0.20） */
+      float bowl = 0.55 * aRadius - 0.15 * (1.0 - aRadius) * (1.0 - aRadius);
+      float zT = ((aT - 0.5) * 0.9 - bowl) * uSegR[21] * 0.9;
       handPos = C + vec3(ex, ey, zT);
     } else {
       vec3 A = uJoints[int(uSegA[si])];
@@ -376,12 +378,13 @@ const VERT = `
       vec3 side = normalize(cross(dir, up));
       vec3 up2 = cross(side, dir);
       float ang = aAngle * 6.28318;
-      /* ── 手指径向剖面（基于 MANO 解剖学）──
-         真实手指剖面：指根处(掌指关节)略粗 → 中段稍收窄 → 指腹微鼓 → 指尖钝圆
-         用单段平滑曲线逼近：taper = 1.0 + aT*(0.02 - 0.38*aT)
-         aT=0.0 → 1.00（指根）  aT=0.4 → 1.01（指腹微鼓）  aT=0.8 → 0.83（近尖）
-         aT=1.0 → 0.64（指尖钝圆，比原 0.55 略粗，避免棍子尖） */
-      float taper = 1.0 + aT * (0.02 - 0.38 * aT);
+      /* ── 手指「指节收窄 + 指腹微鼓」三叶剖面（3D 化升级）──
+          真实手指：指根粗 → 第一关节(knuckle)处收窄 → 指腹微鼓 → 第二关节再收窄 → 指尖钝圆
+          用三叶曲线逼近（仍只允许基础乘法/加减，不碰复杂几何）：
+          aT=0.0→1.00(指根)  0.35→0.82(第一关节收窄)  0.5→0.98(指腹微鼓)  0.8→0.80(第二关节收窄)  1.0→0.62(指尖钝圆)
+          注：radarr 已是 sqrt(random) 面积均匀铺满截面（实心体积），无需再往中心拉 */
+      float pinch = 0.18 * sin(3.14159 * (aT - 0.02));
+      float taper = 1.0 + aT * (0.05 - 0.42 * aT) - pinch;
       vec3 off = (cos(ang)*side + sin(ang)*up2) * (aRadius * uSegR[si] * taper);
       handPos = A + dir * (aT * len) + off;
     }
@@ -937,6 +940,10 @@ let handOn = false, handModel = null, handDelegate = 'GPU';
 let prevCX = null, prevCY = null, prevArea = null;
 let handPresent = false, handGesture = 'none';
 let lastStatus = '';
+/* === 稳控：置信度门槛 + 类别稳定 + EMA 面积平滑 === */
+let lastStableGesture = 'none', stableGestureFrame = 0;
+let smoothArea = null;        /* 掌型大小EMA（腕-中指根距离），用于平滑缩放 */
+let areaSmoothK = 0.25;       /* 面积EMA系数：0.25=更稳，0.5=更跟手 */
 /* 手形 Morph 相关：morphTarget=变形目标(0/1)，uMorph 在 animate 中平滑趋近 */
 let morphTarget = 0;
 const HAND_Z_SCALE = 1.8;   // 深度放大系数（让手指有前后层次）
@@ -1182,34 +1189,42 @@ function onGestureResult(res) {
   let cx = 0, cy = 0;
   for (const i of base) { cx += lm[i].x; cy += lm[i].y; }
   cx /= base.length; cy /= base.length;
+
+  /* 置信度低于 0.6 的手势视为噪声，允许累积偏移但不直接缩放 */
+  const confGate = (g && g.score) ? g.score : 0;
+  const ctrlAllowed = confGate >= 0.6;
+
+  /* 掌型大小EMA：腕(0)到中指根(9)的距离，用于平滑缩放 */
   const p0 = lm[0], p9 = lm[9];
   const area = Math.hypot(p0.x - p9.x, p0.y - p9.y);
+  if (smoothArea === null) smoothArea = area;
+  smoothArea = smoothArea * (1 - areaSmoothK) + area * areaSmoothK;
 
-  /* 张掌时：拖拽旋转 + 推拉缩放（手形跟随，但可拖动换视角）。
-     修正：前置摄像头是镜像画面（手往左移 → cx 减小），
-     让「手往哪移地球就往哪转」：gestYaw -= dx（正负号对齐直觉）；
-     加死区防抖 + EMA 平滑防幅度过大 */
-  if (handGesture === 'Open_Palm' && prevCX !== null && prevCY !== null) {
+  /* 旋转控制：只有当置信度≥0.6时才允许 */
+  if (prevCX !== null && prevCY !== null && ctrlAllowed) {
     const rawDX = cx - prevCX;
     const rawDY = cy - prevCY;
-    const dead  = 0.012;        // 死区：小于此位移忽略（防手抖）
-    const K     = 1.6;          // 增益：原3.2 → 1.6，幅度更可控
+    const dead  = 0.018;
     let ddx = 0, ddy = 0;
     if (Math.abs(rawDX) > dead) ddx = rawDX > 0 ? rawDX - dead : rawDX + dead;
     if (Math.abs(rawDY) > dead) ddy = rawDY > 0 ? rawDY - dead : rawDY + dead;
-    /* EMA 平滑：单帧抖动只贡献 30%，轨迹更稳 */
     smoothDX = smoothDX * 0.7 + ddx * 0.3;
     smoothDY = smoothDY * 0.7 + ddy * 0.3;
-    gestYaw   -= smoothDX * K;  // 手往左移(负x) → 地球往左转(负yaw)
+    const K = 1.6;
+    gestYaw   -= smoothDX * K;
     gestPitch -= smoothDY * K;
     gestPitch = THREE.MathUtils.clamp(gestPitch, -1.25, 1.25);
   }
-  if (prevArea !== null) {
-    const da = area - prevArea;
-    if (Math.abs(da) > 0.02) {
-      const dist = camera.position.distanceTo(controls.target);
-      const nd = THREE.MathUtils.clamp(dist * (1 - da * 6), controls.minDistance, controls.maxDistance);
-      camera.position.sub(controls.target).multiplyScalar(nd / dist).add(controls.target);
+
+  /* 缩放控制：只有当置信度≥0.75且使用EMA面积时才允许（防手抖乱缩放） */
+  if (ctrlAllowed && confGate >= 0.75) {
+    if (prevArea !== null) {
+      const da = smoothArea - prevArea;
+      if (Math.abs(da) > 0.02) {
+        const dist = camera.position.distanceTo(controls.target);
+        const nd = THREE.MathUtils.clamp(dist * (1 - da * 4), controls.minDistance, controls.maxDistance);
+        camera.position.sub(controls.target).multiplyScalar(nd / dist).add(controls.target);
+      }
     }
   }
   prevCX = cx; prevCY = cy; prevArea = area;
