@@ -570,7 +570,7 @@ function buildInterior() {
   spinner.add(fogPoints); spinner.add(mistPoints);
 }
 
-/* （外层防护罩已移除：用户要求取消蓝色保护罩） */
+/* （此处曾为外层防护罩，当前方案未采用） */
 
 async function buildSurface(N) {
   if (building || !landTable) return 0;
@@ -1293,7 +1293,7 @@ async function enableHands() {
     setGestStatus('err', 'warn');
     updateGestBubble(null, 0);
     console.warn('[Hands] 手势启动失败:', msg);
-    /* 摄像头被拒 / 不可用时的可视化提示（原来静默失败，用户误以为"识别不了"） */
+    /* 摄像头被拒 / 不可用时的可视化提示（此前无反馈时难以定位失败原因） */
     showCameraOverlay((e && e.name) ? e.name : msg);
     const retry = () => {
       window.removeEventListener('pointerdown', retry);
