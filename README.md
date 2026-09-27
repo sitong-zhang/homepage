@@ -1,5 +1,7 @@
 # 粒子地球 · Interactive Particle Earth
 
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+
 基于 **Three.js** 构建的真实粒子地球视觉系统，通过 **MediaPipe 手势识别**驱动地球粒子实时变形，实现"零外链"的纯静态沉浸式交互体验。
 
 ## 特性
