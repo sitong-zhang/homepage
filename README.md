@@ -14,7 +14,7 @@
 
 ## 在线体验
 
-- 静态站点：https://sitong-zhang.github.io/homepage/
+- 静态站点：https://sitong-zhang.github.io/particle-earth/
 
 ## 本地运行
 
