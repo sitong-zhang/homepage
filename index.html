@@ -39,7 +39,7 @@
   #retry.on { display: inline-block; }
   #retry:active { transform: scale(.96); }
 
-   /* 城市标签 */
+   /* City labels */
   #cities { position: fixed; inset: 0; z-index: 14; pointer-events: none; overflow: hidden; }
   .city { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); white-space: nowrap;
     font-size: 10.5px; letter-spacing: .08em; color: rgba(255,226,168,.0);
@@ -50,12 +50,12 @@
     box-shadow: 0 0 8px rgba(255,190,110,.9); }
   .city.on { opacity: 1; color: rgba(255,232,186,.92); }
 
-  /* 摄像头：屏幕外隐藏运行（不显示任何视频窗口） */
+  /* Camera: runs hidden off-screen (no video window is displayed) */
   #camv { position: fixed; left: -9999px; top: 0; width: 320px; height: 240px;
     opacity: 0; pointer-events: none; transform: scaleX(-1); }
 
-  /* 手势指示球（华为 Mate 80 隔空手势风格）：从屏幕顶部摄像头下方弹出，
-     白色圆球实时显示当前手势 SVG 图标 + 置信度弧光 */
+  /* Gesture indicator bubble (Huawei Mate 80 air-gesture style): pops out from below the
+     top camera; the white sphere shows the current gesture SVG icon + confidence arc live */
   #gest-bubble { position: fixed; left: 50%; top: 42px; margin-left: -42px;
     width: 84px; height: 84px; border-radius: 50%; z-index: 40;
     background: radial-gradient(circle at 32% 28%, rgba(255,255,255,.98), rgba(242,247,255,.88) 55%, rgba(214,228,250,.94));
@@ -63,9 +63,9 @@
     display: flex; align-items: center; justify-content: center;
     opacity: 0; transform: translateY(-26px) scale(.72);
     transition: opacity .38s cubic-bezier(.22,1,.36,1), transform .38s cubic-bezier(.22,1,.36,1), box-shadow .3s ease; }
-  /* 弹出：加载/识别到手时从摄像头下滑出 */
+  /* Pop-out: slides down from the camera while loading / when a hand is recognized */
   #gest-bubble.pop { opacity: 1; transform: translateY(0) scale(1); }
-  /* 置信度弧光：conic-gradient 按识别置信度填充（0%→360%） */
+  /* Confidence arc: conic-gradient filled according to recognition confidence (0% -> 360%) */
   #gest-bubble .arc { position: absolute; inset: -6px; border-radius: 50%; pointer-events: none;
     background: conic-gradient(rgba(80,190,255,.95) var(--arc, 0%), rgba(80,190,255,.12) 0);
     -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 4px), #000 calc(100% - 3px));
@@ -75,15 +75,15 @@
     user-select: none; transition: transform .15s ease, opacity .3s ease; }
   #gest-ico svg { width: 100%; height: 100%; display: block;
     filter: drop-shadow(0 2px 4px rgba(0,0,0,.25)); }
-  /* 未检测到手：图标变灰缩小 */
+  /* No hand detected: the icon turns gray and shrinks */
   #gest-bubble.idle #gest-ico { opacity: .38; transform: scale(.8); }
   #gest-bubble.idle #gest-ico svg { filter: grayscale(1) drop-shadow(0 2px 4px rgba(0,0,0,.18)); }
   #gest-bubble.idle { box-shadow: 0 8px 26px rgba(0,0,0,.42), 0 0 0 3px rgba(255,255,255,.15), inset 0 -4px 10px rgba(120,150,210,.22); }
-  /* 识别成功：轻微呼吸脉冲 */
+  /* Recognized: subtle breathing pulse */
   #gest-bubble.ok { animation: bubblePulse 1.2s ease-in-out infinite; }
   @keyframes bubblePulse { 0%,100% { box-shadow: 0 8px 26px rgba(0,0,0,.42), 0 0 0 3px rgba(255,255,255,.32), inset 0 -4px 10px rgba(120,150,210,.30), 0 0 20px rgba(120,200,255,.38); }
     50% { box-shadow: 0 8px 26px rgba(0,0,0,.42), 0 0 0 3px rgba(255,255,255,.32), inset 0 -4px 10px rgba(120,150,210,.30), 0 0 34px rgba(120,200,255,.64); } }
-  /* 加载/切换：旋转小弧 */
+  /* Loading / switching: small spinning arc */
   #gest-bubble.busy .arc { animation: arcSpin 1s linear infinite; background: conic-gradient(rgba(160,210,255,.9) 25%, rgba(160,210,255,.1) 0); }
   @keyframes arcSpin { to { transform: rotate(360deg); } }
 </style>
@@ -101,7 +101,7 @@
 
 <div id="cities"></div>
 
-<!-- 手势摄像头（屏幕外隐藏运行）+ 顶部白色手势指示球（华为隔空手势风格） -->
+<!-- Gesture camera (runs hidden off-screen) + white gesture indicator bubble at the top (Huawei air-gesture style) -->
 <video id="camv" autoplay playsinline muted></video>
 <div id="gest-bubble" class="busy">
   <i class="arc"></i>
@@ -135,13 +135,13 @@ const CFG = {
   radius        : 2.0,
   targetSamples : 200000,
   oceanKeep     : 0.02,
-  fogCount      : 45000,    // 内部雾体（Normal 混合，把内部填满）
-  mistCount     : 60000,   // 内部辉光雾（Additive）
-  moonRadius    : 0.26,     // 月球半径（×R）
-  moonDist      : 3.4,      // 月球轨道半径（×R）
-  moonSpeed     : 0.012,    // 公转角速度 rad/s（很慢）
-  cityPer       : 46,       // 每座城市的灯光点数
-  citySpread    : 0.052     // 城市灯光扩散半径（×R）
+  fogCount      : 45000,    // Interior fog volume (Normal blending, fills the interior)
+  mistCount     : 60000,   // Interior glow mist (Additive)
+  moonRadius    : 0.26,     // Moon radius (×R)
+  moonDist      : 3.4,      // Moon orbit radius (×R)
+  moonSpeed     : 0.012,    // Orbital angular velocity in rad/s (very slow)
+  cityPer       : 46,       // Number of light points per city
+  citySpread    : 0.052     // City light spread radius (×R)
 };
 
 const SUN_DIR    = new THREE.Vector3(0.60, 0.28, 0.75).normalize();
@@ -229,7 +229,7 @@ async function fetchLand(url) {
       setProgress('Downloading land data… ' + Math.round(p * 100) + '%');
     }
   } finally { clearInterval(stall); }
-  if (received < 200000) throw new Error('下载不完整: ' + received);
+  if (received < 200000) throw new Error('Incomplete download: ' + received);
   return JSON.parse(await new Blob(chunks).text());
 }
 
@@ -242,10 +242,10 @@ async function loadLandGeoJSON() {
         setProgress('Parsing land data…'); setBar(0.72); await frame();
         const land = topojson.feature(topo, topo.objects.land || Object.values(topo.objects)[0]);
         setBar(0.78);
-        console.log('[Earth] 陆地数据已加载:', url);
+        console.log('[Earth] Land data loaded:', url);
         return { land, url };
       } catch (e) {
-        console.warn('[Earth] 源失败:', url, e);
+        console.warn('[Earth] Source failed:', url, e);
         if (attempt === 0) { setProgress('Connection interrupted, retrying…'); await new Promise(r => setTimeout(r, 800)); }
       }
     }
@@ -325,7 +325,7 @@ let baseHSL = { h: 0, s: 0, l: 0 };
 new THREE.Color('#3aa8ff').getHSL(baseHSL);
 const _c = new THREE.Color();
 
-/* 陆地：统一白色小点（不随纬度变化，全陆一致） */
+/* Land: uniform small white dots (do not vary with latitude, uniform across all land) */
 function landColor() {
   return _c.setHSL(0, 0, 0.92);
 }
@@ -336,33 +336,33 @@ function oceanColor() {
 const VERT = `
   attribute float size;
   attribute vec3  aColor;
-  attribute float aSeg;      // 骨骼段索引 0..22
-  attribute float aT;        // 段内位置 0..1（指根→指尖）
-  attribute float aAngle;    // 绕骨轴角度 0..1
-  attribute float aRadius;   // 距骨轴半径比例 0..1
+  attribute float aSeg;      // Bone segment index 0..22
+  attribute float aT;        // Position within the segment, 0..1 (finger base -> tip)
+  attribute float aAngle;    // Angle around the bone axis, 0..1
+  attribute float aRadius;   // Radius ratio from the bone axis, 0..1
   uniform float uPixelRatio, uSizeScale;
   uniform vec3  uLightDir;
   uniform float uEmissive;
-  uniform float uMorph;      // 0=地球  1=手形
-  uniform vec3  uJoints[22]; // 21 个手部关键点 + 1 个掌心虚拟点
-  uniform float uSegA[23];   // 每段起点关键点索引
-  uniform float uSegB[23];   // 每段终点关键点索引
-  uniform float uSegR[23];   // 每段半径
+  uniform float uMorph;      // 0=globe  1=hand
+  uniform vec3  uJoints[22]; // 21 hand landmarks + 1 virtual palm point
+  uniform float uSegA[23];   // Start landmark index of each segment
+  uniform float uSegB[23];   // End landmark index of each segment
+  uniform float uSegR[23];   // Radius of each segment
   varying vec3  vColor;
   void main() {
     int si = int(aSeg);
     vec3 handPos;
     if (si == 21) {
-      /* ── 掌心椭圆盘（v12 3D化：中心凹陷 + 掌缘隆起的立体掌窝）──
-           真实掌心内凹、四周掌缘隆起。用「径向二次凹陷」逼近：
-           中心(aRadius 小)处 z 略凹进，边缘(aRadius 大)处 z 隆起 → 立体掌窝 */
+      /* -- Palm ellipse disc (v12 3D-ified: recessed center + raised palm rim -> a solid palm hollow) --
+           A real palm is concave at the center and bulges along its rim. Approximated with a "radial
+           quadratic depression": z dips where aRadius is small and bulges where it is large -> hollow */
       vec3 C = uJoints[21];
       float ang2 = aAngle * 6.28318;
       float r2   = aRadius * uSegR[21];
-      /* 椭圆：x 轴 ×1.15 略宽、y 轴 ×0.80 略窄 → 横向手掌感 */
+      /* Ellipse: x axis ×1.15 slightly wider, y axis ×0.80 slightly narrower -> horizontal palm feel */
       float ex = cos(ang2) * r2 * 1.15;
       float ey = sin(ang2) * r2 * 0.80;
-      /* 掌窝凹陷加深：z 随径向先凹后隆（中心凹、边缘隆），厚度 ×1.25 更立体 */
+      /* Deeper palm hollow: z first dips then bulges along the radius (concave center, raised edge), thickness ×1.25 */
       float bowl = 0.60 * aRadius - 0.20 * (1.0 - aRadius) * (1.0 - aRadius);
       float zT = ((aT - 0.5) * 1.1 - bowl) * uSegR[21] * 0.9;
       handPos = C + vec3(ex, ey, zT);
@@ -376,12 +376,12 @@ const VERT = `
       vec3 side = normalize(cross(dir, up));
       vec3 up2 = cross(side, dir);
       float ang = aAngle * 6.28318;
-      /* ── 手指「指节收窄 + 指腹微鼓」三叶剖面（v12 3D化）──
-         真实手指 3D 结构：指根→第一关节(knuckle)→指腹→第二关节→指尖
-         用连续多项式模拟分节（兼容红线内：只用加减乘/sin，无复杂分支）：
+      /* -- Three-lobe finger profile: "narrowed knuckles + slightly bulging pads" (v12 3D-ified) --
+         Real finger structure: finger base -> first joint (knuckle) -> pad -> second joint -> tip
+         Modeled with a continuous polynomial (kept legal: only + - * / and sin, no complex branching):
          f(t) = 1.0 + A*t*(B - C*t) - D*sin(π*(t-ε))
-         当 t=0(指根) f=1.0；t≈0.35 关节收窄；t≈0.55 指腹鼓；t≈0.8 二关节收窄；t=1 指尖钝圆
-         相比 v10 的单调 taper，这个剖面有多段起伏，肉眼可见"分节" */
+         t=0 (base) f=1.0; t~0.35 joint narrows; t~0.55 pad bulges; t~0.80 second joint narrows; t=1 blunt tip
+         Unlike v10's monotonic taper, this profile undulates several times, visibly "jointed" */
       float pinch = 0.16 * sin(3.14159 * (aT - 0.03));
       float taper = 1.0 + aT * (0.06 - 0.40 * aT) - pinch;
       vec3 off = (cos(ang)*side + sin(ang)*up2) * (aRadius * uSegR[si] * taper);
@@ -395,11 +395,11 @@ const VERT = `
     float sun = smoothstep(-0.08, 0.55, dot(n, uLightDir));
     vec3 nightC = vec3(0.07, 0.09, 0.15) + vec3(0.26, 0.34, 0.55) * uEmissive;
     vec3 tint = mix(nightC, vec3(1.0, 0.97, 0.92), sun);
-    /* 手形时混入暖白辉光，强化切换感 */
+    /* Hand form blends in a warm white glow to strengthen the transition */
     vec3 handC = vec3(0.98, 0.90, 0.80) + vec3(0.0, 0.02, 0.10) * aT;
     tint = mix(tint, handC, uMorph * 0.55);
     vColor = aColor * tint;
-    /* 手形时粒子放大：v12 从 0.9 提到 1.3，手更致密饱满（地球时保持原尺寸） */
+    /* Particles grow in hand form: v12 raises it from 0.9 to 1.3 so the hand looks denser and fuller (globe size kept) */
     gl_PointSize = size * (1.0 + uMorph * 1.3) * uSizeScale * uPixelRatio * (9.0 / -mvPosition.z);
     gl_Position  = projectionMatrix * mvPosition;
   }
@@ -411,7 +411,7 @@ const FRAG = `
     vec2 uv = gl_PointCoord - 0.5;
     float d2 = dot(uv, uv);
     if (d2 > 0.25) discard;
-    /* 实心小圆点：中心到边缘快速截止，避免光斑式辉光 */
+    /* Solid small dot: sharp cutoff from center to edge to avoid a light-blob glow */
     float a = smoothstep(0.25, 0.18, d2);
     a *= 0.92 + 0.08 * sin(uTime * 1.8);
     gl_FragColor = vec4(vColor, a);
@@ -429,7 +429,7 @@ const FOG_FRAG = `
     gl_FragColor = vec4(vColor, a);
   }
 `;
-/* 内部雾专用顶点着色器：纯色直出，不受光照/夜侧影响，保证雾是白色 */
+/* Vertex shader dedicated to the interior fog: flat color straight out, unaffected by lighting/night side, keeping it white */
 const FOG_VERT = `
   attribute float size;
   attribute vec3  aColor;
@@ -470,7 +470,7 @@ const mistMat = new THREE.ShaderMaterial({
   vertexShader: FOG_VERT, fragmentShader: FOG_FRAG,
   transparent: true, depthWrite: false, depthTest: true, blending: THREE.AdditiveBlending
 });
-/* （外层蓝色防护罩已移除，内部雾仍保留提供体积感） */
+/* (The outer blue shield has been removed; the interior fog remains to provide volumetric depth) */
 
 function makePoints(pos, col, siz, mat, extra) {
   const g = new THREE.BufferGeometry();
@@ -487,32 +487,32 @@ function makePoints(pos, col, siz, mat, extra) {
   return new THREE.Points(g, mat);
 }
 
-/* ── 手形骨骼段定义（MediaPipe 21 关键点 → 22 段：20 指节 + 腕 + 掌心盘）──
-   每段 [起点关键点, 终点关键点, 半径, 权重]；权重用于按体积分配粒子。
-   索引：0=腕 1-4=拇指 5-8=食指 9-12=中指 13-16=无名指 17-20=小指，21=掌心虚拟点
-   关键改进：每根手指从「掌心虚拟点(21)」伸出（新增 [21,指根] 连接段），
-   手指根埋进掌心盘 → 手指与手掌连成一体，不再是悬空骨架；
-   同时手指半径全部加粗，更接近真实手指 */
-const PALM_SEG = 21;   // 掌心圆盘段索引（shader 特殊处理）
+/* -- Hand bone segments (MediaPipe 21 landmarks -> 22 segments: 20 finger bones + wrist + palm disc) --
+   Each segment is [start landmark, end landmark, radius, weight]; the weight distributes particles by volume.
+   Indices: 0=wrist 1-4=thumb 5-8=index 9-12=middle 13-16=ring 17-20=pinky, 21=virtual palm point
+   Key improvement: every finger grows out of the "virtual palm point (21)" (a new [21, base] link),
+   so finger bases sink into the palm disc -> fingers and palm form one solid body, no floating skeleton;
+   finger radii are also thickened throughout, closer to a real hand */
+const PALM_SEG = 21;   // Palm disc segment index (handled specially in the shader)
 const HAND_SEGMENTS = [
-  /* 拇指：掌→拇指根(1) 再沿拇指到指尖
-     v12 3D化：全部段半径加粗约 35%；
-     掌骨段([21,指根])额外 ×1.5 → 形成掌骨隆起；指节阶梯更分明（近粗远细） */
+  /* Thumb: palm -> thumb base (1), then along the thumb to the tip
+     v12 3D-ified: every segment radius thickened by about 35%; the metacarpal segments ([21, base]) get
+     an extra ×1.5 -> metacarpal bulge; the phalanx steps read more clearly (thick near, thin far) */
   [21,1,0.30,1.8],[1,2,0.26,1],[2,3,0.21,1],[3,4,0.17,1],
-  /* 食指 */
+  /* Index finger */
   [21,5,0.45,1.8],[5,6,0.34,1],[6,7,0.28,1],[7,8,0.22,1],
-  /* 中指 */
+  /* Middle finger */
   [21,9,0.45,1.8],[9,10,0.36,1],[10,11,0.30,1],[11,12,0.24,1],
-  /* 无名指 */
+  /* Ring finger */
   [21,13,0.42,1.8],[13,14,0.34,1],[14,15,0.28,1],[15,16,0.22,1],
-  /* 小指 */
+  /* Pinky */
   [21,17,0.36,1.8],[17,18,0.28,1],[18,19,0.23,1],[19,20,0.18,1],
-  /* 腕→掌心 */
+  /* Wrist -> palm */
   [0,21,0.45,1.2],
-  /* 掌心椭圆盘（特殊）：半径加大盖住指根，权重提升保证手掌有实体体积 */
+  /* Palm ellipse disc (special): a larger radius covers the finger bases; the raised weight keeps real palm volume */
   [21,21,1.25,6]
 ];
-/* 预计算各段的粒子分配权重（权重 × 段近似体积） */
+/* Precompute the particle distribution weight of each segment (weight × approximate segment volume) */
 const HAND_SEG_WEIGHTS = (() => {
   const w = HAND_SEGMENTS.map(s => s[3]);
   const sum = w.reduce((a, b) => a + b, 0);
@@ -526,7 +526,7 @@ function pickHandSegment() {
   }
   return HAND_SEGMENTS.length - 1;
 }
-/* 初始化着色器的 uSegA/uSegB/uSegR */
+/* Initialize the shader uniforms uSegA/uSegB/uSegR */
 (function initSegUniforms() {
   const A = surfMat.uniforms.uSegA.value, B = surfMat.uniforms.uSegB.value, R = surfMat.uniforms.uSegR.value;
   for (let i = 0; i < HAND_SEGMENTS.length; i++) {
@@ -542,12 +542,12 @@ function buildInterior() {
     const rr = Math.sqrt(Math.max(0, 1 - u * u));
     return [rr * Math.cos(th), u, rr * Math.sin(th)];
   };
-  /* 从球心附近一直填到表面下方，确保内部是明显的白色 */
+  /* Fill from near the sphere center all the way to just below the surface, keeping the interior clearly white */
   for (let j = 0; j < CFG.fogCount; j++) {
     const [dx, dy, dz] = rnd();
     const r = R * (0.16 + 0.82 * Math.cbrt(Math.random()));
     fPos.push(dx * r, dy * r, dz * r);
-    /* 内部雾：纯白色（饱和度 0），亮度足够高才能盖住蓝色底 */
+    /* Interior fog: pure white (saturation 0), bright enough to cover the blue base */
     col.setHSL(0, 0, 0.20 + Math.random() * 0.06);
     fCol.push(col.r, col.g, col.b);
     fSiz.push(1.20 + Math.random() * 0.80);
@@ -556,7 +556,7 @@ function buildInterior() {
     const [dx, dy, dz] = rnd();
     const r = R * (0.20 + 0.79 * Math.cbrt(Math.random()));
     mPos.push(dx * r, dy * r, dz * r);
-    /* 内部辉光雾：纯白色，稍暗一点作层次 */
+    /* Interior glow mist: pure white, slightly dimmer for layering */
     col.setHSL(0, 0, 0.12 + Math.random() * 0.05);
     mCol.push(col.r, col.g, col.b);
     mSiz.push(1.00 + Math.random() * 0.70);
@@ -568,7 +568,7 @@ function buildInterior() {
   spinner.add(fogPoints); spinner.add(mistPoints);
 }
 
-/* （此处曾为外层防护罩，当前方案未采用） */
+/* (The outer shield used to live here; it is not used in the current approach) */
 
 async function buildSurface(N) {
   if (building || !landTable) return 0;
@@ -591,27 +591,27 @@ async function buildSurface(N) {
     if (!isLand && Math.random() > CFG.oceanKeep) continue;
     isLand ? landCount++ : oceanCount++;
 
-    /* 陆地/海洋都在同一球面高度（半径固定，无随机扰动），平行排列 */
+    /* Land and ocean sit at the same spherical height (fixed radius, no random jitter), flush with each other */
     const rr = R * (isLand ? 1.006 : 1.0);
     pos.push(x * rr, y * rr, z * rr);
 
     const c = isLand ? landColor() : oceanColor();
     col.push(c.r, c.g, c.b);
-    /* 陆地：大小一致的蓝色小点；海洋：较小且略随机 */
+    /* Land: uniformly sized small dots; ocean: smaller and slightly random */
     siz.push(isLand ? 0.50 : 0.28 + Math.random() * 0.14);
 
-    /* 手形骨骼归属：随机分配到某根骨骼段，生成圆柱采样参数 */
+    /* Hand bone assignment: randomly assign to some bone segment, generating cylinder sampling parameters */
     seg.push(pickHandSegment());
     tarr.push(Math.random());
     angarr.push(Math.random());
-    radarr.push(Math.sqrt(Math.random())); // 面积均匀，让粒子铺满截面
+    radarr.push(Math.sqrt(Math.random())); // Uniform in area so particles fill the whole cross-section
   }
 
   if (earthPoints) { spinner.remove(earthPoints); earthPoints.geometry.dispose(); }
   earthPoints = makePoints(pos, col, siz, surfMat, { seg, t: tarr, angle: angarr, radius: radarr });
   spinner.add(earthPoints);
 
-  console.log('[Earth] 采样 ' + N + ' 点 · 陆地 ' + landCount + ' · 海洋 ' + oceanCount + ' · 最终 ' + pos.length / 3 + ' 粒子');
+  console.log('[Earth] Sampled ' + N + ' points · land ' + landCount + ' · ocean ' + oceanCount + ' · final ' + pos.length / 3 + ' particles');
   building = false;
   return pos.length / 3;
 }
@@ -632,7 +632,7 @@ function makeGlowTexture() {
   return tex;
 }
 
-/* ── 城市灯光：真实经纬度 + 中文名 ───────────────────────────── */
+/* -- City lights: real coordinates + names ------------------------------------ */
 const CITIES = [
   ['Beijing',39.90,116.41], ['Shanghai',31.23,121.47], ['Guangzhou',23.13,113.26],
   ['Shenzhen',22.54,114.06], ['Chengdu',30.57,104.07], ['Chongqing',29.56,106.55],
@@ -657,7 +657,7 @@ const CITIES = [
   ['Sydney',-33.87,151.21], ['Melbourne',-37.81,144.96], ['Auckland',-36.85,174.76]
 ];
 
-/* 经纬度 → 球面局部坐标（与 toLonLat 严格互逆） */
+/* Longitude/latitude -> local sphere coordinates (strictly inverse of toLonLat) */
 function lonLatToVec(lat, lon, r) {
   const la = lat * Math.PI / 180, lo = lon * Math.PI / 180;
   return new THREE.Vector3(
@@ -715,15 +715,15 @@ function buildCities() {
 
   for (const [name, lat, lon] of CITIES) {
     const base = lonLatToVec(lat, lon, R * 1.012);
-    /* 该点处的切平面正交基 */
+    /* Orthonormal basis of the tangent plane at that point */
     const n  = base.clone().normalize();
     const t1 = new THREE.Vector3().crossVectors(Y, n);
-    if (t1.lengthSq() < 1e-6) t1.set(1, 0, 0);   // 极点退化
+    if (t1.lengthSq() < 1e-6) t1.set(1, 0, 0);   // Degenerate at the poles
     t1.normalize();
     const t2 = new THREE.Vector3().crossVectors(n, t1).normalize();
 
     for (let k = 0; k < CFG.cityPer; k++) {
-      /* 中心密集、外缘稀疏的高斯式散布 */
+      /* Gaussian-like scatter: dense in the center, sparse at the outer edge */
       const ang = Math.random() * Math.PI * 2;
       const rad = Math.pow(Math.random(), 1.9) * CFG.citySpread * R;
       const p = base.clone()
@@ -733,7 +733,7 @@ function buildCities() {
       p.multiplyScalar(L);
       pos.push(p.x, p.y, p.z);
 
-      /* 霓虹绿灯光 → 核心偏亮绿白，外缘偏深绿 */
+      /* Neon green lights: the core leans bright green-white, the outer edge leans deep green */
       const w = Math.random();
       c.setHSL(0.33, 0.90 - w * 0.30, 0.58 + (1 - Math.random()) * 0.30);
       col.push(c.r, c.g, c.b);
@@ -759,7 +759,7 @@ function buildCities() {
   spinner.add(cityPoints);
 }
 
-/* ── 月球：缓慢公转，自带明暗界线与月海斑块 ─────────────────── */
+/* -- Moon: slow orbit, with its own terminator and maria patches --------------------------- */
 let moonPivot = null, moonMesh = null;
 function buildMoon() {
   const R = CFG.radius;
@@ -789,7 +789,7 @@ function buildMoon() {
       }`
   });
   moonMesh = new THREE.Mesh(new THREE.SphereGeometry(R * CFG.moonRadius, 56, 40), mat);
-  /* 起始位于右下方，且落在相机后方之外，保证一进页面就能看到 */
+  /* Starts at the lower right and beyond the rear of the camera, so it is visible right after the page loads */
   const a = 0.55;
   moonMesh.position.set(
     R * CFG.moonDist * Math.sin(a),
@@ -873,7 +873,7 @@ function buildStarfield() {
     return;
   }
   landGeoRef = got.land;
-  console.log('[Earth] 数据源: ' + (got.url.indexOf('110m') >= 0 ? 'Natural Earth 1:110m' : 'Natural Earth 1:10m'));
+  console.log('[Earth] Data source: ' + (got.url.indexOf('110m') >= 0 ? 'Natural Earth 1:110m' : 'Natural Earth 1:10m'));
 
   setProgress('Rasterizing land boundaries…'); setBar(0.8); await frame();
   landTable = rasterizeLand(got.land);
@@ -888,11 +888,11 @@ function buildStarfield() {
   const el = $('loading');
   el.classList.add('hide');
   setTimeout(() => el.remove(), 1000);
-  /* 手势自动开启：加载完成即启动摄像头手势识别（无需点击，无任何文字） */
+  /* Gestures start automatically: camera gesture recognition launches right after loading finishes (no click, no text) */
   setTimeout(enableHands, 600);
 })();
 
-/* ── 城市标签投影：只在面向相机 + 夜侧时浮现，并做防重叠剔除 ── */
+/* -- City label projection: surfaces only when facing the camera + on the night side, with anti-overlap culling -- */
 const _cw = new THREE.Vector3(), _cn = new THREE.Vector3();
 const _cc = new THREE.Vector3(), _cp = new THREE.Vector3();
 const _taken = [];
@@ -929,11 +929,11 @@ function updateCityLabels() {
 
 const clock = new THREE.Clock();
 let spinY = 0, uiTick = 0;
-/* 手势控制累积旋转：手往哪移，地球就同向转到哪 */
+/* Accumulated gesture rotation: the globe turns in the same direction the hand moves */
 let gestYaw = 0, gestPitch = 0;
-/* 手势拖拽 EMA 平滑：消除单帧抖动，防幅度过大 */
+/* Gesture drag EMA smoothing: removes single-frame jitter and prevents excessive motion */
 let smoothDX = 0, smoothDY = 0;
-/* 手势识别相关变量（提前声明，避免 animate 首帧 TDZ） */
+/* Gesture recognition variables (declared early to avoid TDZ on the first animate frame) */
 const camv = $('camv');
 const gestBubbleEl = $('gest-bubble');
 const gestIcoEl = $('gest-ico');
@@ -941,13 +941,13 @@ let handOn = false, handModel = null, handDelegate = 'GPU';
 let prevCX = null, prevCY = null, prevArea = null;
 let handPresent = false, handGesture = 'none';
 let lastStatus = '';
-/* === 稳控：置信度门槛 + 类别稳定 + EMA 面积平滑 === */
+/* === Stabilization: confidence gate + category stability + EMA area smoothing === */
 let lastStableGesture = 'none', stableGestureFrame = 0;
-let smoothArea = null;        /* 掌型大小EMA（腕-中指根距离），用于平滑缩放 */
-let areaSmoothK = 0.25;       /* 面积EMA系数：0.25=更稳，0.5=更跟手 */
-/* 手形 Morph 相关：morphTarget=变形目标(0/1)，uMorph 在 animate 中平滑趋近 */
+let smoothArea = null;        /* Palm size EMA (wrist-to-middle-finger-base distance), used for smooth scaling */
+let areaSmoothK = 0.25;       /* Area EMA coefficient: 0.25 = steadier, 0.5 = more responsive */
+/* Hand morph: morphTarget = the morph goal (0/1); uMorph eases toward it inside animate() */
 let morphTarget = 0;
-const HAND_Z_SCALE = 1.8;   // 深度放大系数（让手指有前后层次）
+const HAND_Z_SCALE = 1.8;   // Depth magnification factor (gives fingers front-to-back layering)
 
 function animate() {
   requestAnimationFrame(animate);
@@ -956,7 +956,7 @@ function animate() {
     const t  = clock.getElapsedTime();
     controls.update();
 
-    /* 固定朝向：地球不自转（取消自动旋转），仅保留用户手动拖动与手势控制视角 */
+    /* Fixed orientation: the globe does not spin by itself (auto-rotation removed); only manual drag and gesture control remain */
     spinner.rotation.y = spinY + gestYaw;
     tilt.rotation.x = gestPitch;
 
@@ -965,9 +965,9 @@ function animate() {
     mistMat.uniforms.uTime.value  = t;
     cityMat.uniforms.uTime.value  = t;
 
-    /* 手形 Morph：uMorph 平滑趋近 morphTarget（手到→溶解成手，手离开→流回地球） */
+    /* Hand morph: uMorph eases toward morphTarget (hand arrives -> dissolve into a hand, hand leaves -> flow back to the globe) */
     const curM = surfMat.uniforms.uMorph.value;
-    const spd  = morphTarget > curM ? 3.2 : 2.2;   // 溶解快、回流稍缓更自然
+    const spd  = morphTarget > curM ? 3.2 : 2.2;   // Fast dissolve, slightly slower flow-back feels more natural
     surfMat.uniforms.uMorph.value = THREE.MathUtils.clamp(
       curM + (morphTarget - curM) * Math.min(1, dt * spd), 0, 1
     );
@@ -975,7 +975,7 @@ function animate() {
     if (starfield) { starfield.material.uniforms.uTime.value = t; starfield.rotation.y = t * 0.004; }
     if (sunRef) { const p = 1 + 0.035 * Math.sin(t * 1.1); sunRef.glow.scale.set(80 * p, 80 * p, 1); }
 
-    /* 月球缓慢公转；转到离相机过近时收缩淡出，避免糊住画面 */
+    /* The moon orbits slowly; when it comes too close to the camera it shrinks and fades so it does not blur the frame */
     if (moonPivot) {
       moonPivot.rotation.y += dt * CFG.moonSpeed;
       moonMesh.getWorldPosition(_cw);
@@ -985,28 +985,28 @@ function animate() {
       moonMesh.visible = k > 0.02;
     }
 
-    /* UI 层每 2 帧刷新一次即可 */
+    /* The UI layer only needs to refresh once every 2 frames */
     if ((uiTick++ & 1) === 0) {
       spinner.updateMatrixWorld(true);
       updateCityLabels();
     }
 
     composer.render();
-    /* 心跳记录：每次成功渲染刷新时间戳，供看门狗检测卡死/崩溃 */
+    /* Heartbeat record: refreshes the timestamp on every successful render for the watchdog to detect freezes/crashes */
     window.__lastRenderOk = Date.now();
   } catch (err) {
-    /* 渲染循环兜底：任何一帧异常都不允许整个画面白屏，
-       记录一次并尝试重建 WebGL context（应对 context lost） */
+    /* Render loop fallback: an error in any frame must not leave the whole screen blank;
+       log it once and try to rebuild the WebGL context (to cope with context lost) */
     if (!window.__renderErrShown) {
       window.__renderErrShown = true;
-      console.error('[Render] 渲染帧异常:', err);
+      console.error('[Render] Exception in render frame:', err);
       showFatalOverlay('An exception occurred during rendering; recovery was attempted. If the screen stays blank, click “Reload”.');
     }
   }
 }
 animate();
 
-/* ── 致命错误兜底层：WebGL context lost / 渲染异常时显示可恢复提示，避免纯白屏 ── */
+/* -- Fatal error fallback layer: shows a recoverable prompt on WebGL context lost / render errors instead of a blank white screen -- */
 function showFatalOverlay(msg) {
   let o = document.getElementById('fatal-ov');
   if (!o) {
@@ -1027,7 +1027,7 @@ function showFatalOverlay(msg) {
     document.body.appendChild(o);
   }
 }
-/* WebGL context 丢失（手机切后台/内存回收常见）→ 显示提示而非白屏 */
+/* WebGL context lost (common when mobile apps go to the background or memory is reclaimed) -> show a prompt instead of a white screen */
 if (renderer && renderer.domElement) {
   renderer.domElement.addEventListener('webglcontextlost', (e) => {
     e.preventDefault();
@@ -1053,9 +1053,9 @@ window.addEventListener('resize', () => {
   if (starfield) starfield.material.uniforms.uPixelRatio.value = pr;
 });
 
-/* ── 手势识别（Google MediaPipe GestureRecognizer，官方 tasks-vision）
-   最高星标/最权威手势识别方案：官方手势模型识别 7 种手势 + 置信度，
-   远优于旧版手工判定手指伸展的方法 ── */
+/* -- Gesture recognition (Google MediaPipe GestureRecognizer, official tasks-vision)
+   Highest-starred / most authoritative solution: the official model recognizes 7 gestures + confidence,
+   far superior to the old hand-rolled finger-extension heuristics -- */
 const GEST_WASM = './vendor/mediapipe/wasm';
 const GEST_MODEL = './vendor/mediapipe/gesture_recognizer.task';
 const GEST_LABELS = {
@@ -1064,12 +1064,12 @@ const GEST_LABELS = {
   Thumb_Down: { name: 'Thumbs Down' }, Victory: { name: 'Victory' },
   ILoveYou: { name: 'I Love You' }
 };
-/* Twemoji 彩色 SVG 手势图标（来自 farewell 图标库收录的 jdecked/twemoji） */
+/* Twemoji color SVG gesture icons (from jdecked/twemoji, collected in the farewell icon library) */
 const GEST_ICONS = {
   Open_Palm: '270b', Closed_Fist: '270a', Victory: '270c', Thumb_Up: '1f44d',
   Thumb_Down: '1f44e', Pointing_Up: '261d', ILoveYou: '1f91f'
 };
-const GEST_IDLE_ICON = '1f590'; // 🖐️ 张开手（未识别到手时显示）
+const GEST_IDLE_ICON = '1f590'; // 🖐️ Open hand (shown when no hand is recognized)
 const GEST_ICON_DIR = './vendor/gesture-icons/';
 function setGestStatus(txt, cls) {
   const s = (cls || '') + '|' + txt;
@@ -1078,15 +1078,15 @@ function setGestStatus(txt, cls) {
   gestBubbleEl.classList.remove('ok', 'warn', 'idle', 'busy');
   if (cls) gestBubbleEl.classList.add(cls);
 }
-/* 注入 Twemoji SVG 图标（本地文件，直接 fetch 后嵌入，避免 emoji 字体丑陋） */
+/* Inject Twemoji SVG icons (local files, fetched and inlined to avoid ugly emoji fonts) */
 function setGestIcon(code) {
   const target = GEST_ICON_DIR + code + '.svg';
   fetch(target).then(r => r.ok ? r.text() : Promise.reject()).then(svg => {
     gestIcoEl.innerHTML = svg;
   }).catch(() => {});
 }
-/* 白色手势指示球：更新 SVG 图标 + 置信度弧光 + 弹出动画（华为 Mate 80 隔空手势风格）
-   有手势 → 弹出显示；无手势 → 缩回顶部 */
+/* White gesture indicator bubble: updates the SVG icon + confidence arc + pop-out animation
+   (Huawei Mate 80 air-gesture style). Gesture -> pops out; no gesture -> retracts to the top */
 function updateGestBubble(gesture, conf) {
   if (gesture && gesture !== 'none' && gesture !== 'unknown') {
     setGestIcon(GEST_ICONS[gesture] || GEST_IDLE_ICON);
@@ -1097,39 +1097,39 @@ function updateGestBubble(gesture, conf) {
   } else {
     setGestIcon(GEST_IDLE_ICON);
     gestBubbleEl.style.setProperty('--arc', '0deg');
-    gestBubbleEl.classList.remove('ok', 'busy', 'pop');   // 移除 pop → 缩回
+    gestBubbleEl.classList.remove('ok', 'busy', 'pop');   // Removing pop -> retracts
     gestBubbleEl.classList.add('idle');
   }
 }
-/* 将 MediaPipe 归一化手部关键点 → 世界坐标，写入 uJoints uniform。
-   手形居中于原点（地球位置），正对屏幕；支持实时跟手：
-   - 用手腕→中指根的实际距离做动态归一化，保证手形大小稳定（不随手远近变化）
-   - x/y 归一化 → 居中放大的世界 XY
-   - z（MediaPipe 相对深度）→ 放大后作为前后层次
-   - 锚点跟随手在画面中的位置移动（等级2：轻微平移跟随） */
+/* Convert the MediaPipe normalized hand landmarks -> world coordinates, written into the uJoints uniform.
+   The hand is centered on the origin (where the globe is), faces the screen, and supports live tracking:
+   - Normalizing by the actual wrist -> middle-finger-base distance keeps hand size stable (it does not
+     change with how near or far the hand is); normalized x/y -> centered and enlarged world XY
+   - z (MediaPipe relative depth) -> magnified and used as front-to-back layering
+   - The anchor follows the hand's position in frame (level 2: slight translational follow) */
 function updateHandJoints(lm) {
   const J = surfMat.uniforms.uJoints.value;
-  /* 手掌中心锚点（跟随手移动） */
+  /* Palm center anchor (follows the moving hand) */
   let ax = 0, ay = 0, az = 0;
   for (const i of [0, 5, 9, 13, 17]) { ax += lm[i].x; ay += lm[i].y; az += lm[i].z; }
   ax /= 5; ay /= 5; az /= 5;
 
-  /* 尺度基准：手腕(0) → 中指根(9) 距离，各手势下相对稳定 */
+  /* Scale reference: the wrist(0) -> middle finger base(9) distance, relatively stable across gestures */
   const wx = lm[9].x - lm[0].x, wy = lm[9].y - lm[0].y;
   const unitLen = Math.max(0.02, Math.hypot(wx, wy));
-  /* 目标：这个距离 = HAND_PALM_LEN 世界单位 */
+  /* Goal: this distance = HAND_PALM_LEN world units */
   const HAND_PALM_LEN = 1.4;
   const S = HAND_PALM_LEN / unitLen;
 
   for (let i = 0; i < 21; i++) {
     const p = lm[i];
     const x = (p.x - ax) * S;
-    const y = (ay - p.y) * S;         // 翻转 MediaPipe 的 y 向下 → 世界 y 向上
+    const y = (ay - p.y) * S;         // Flip MediaPipe's downward y -> world y upward
     const z = (az - p.z) * S * HAND_Z_SCALE;
     J[i].set(x, y, z);
   }
 
-  /* 掌心虚拟点(21)：四个指根(5,9,13,17)的平均，作为掌心圆盘中心 */
+  /* Virtual palm point (21): the average of the four finger bases (5,9,13,17), i.e. the palm disc center */
   let px = 0, py = 0, pz = 0;
   for (const i of [5, 9, 13, 17]) { px += lm[i].x; py += lm[i].y; pz += lm[i].z; }
   px /= 4; py /= 4; pz /= 4;
@@ -1138,14 +1138,14 @@ function updateHandJoints(lm) {
     (ay - py) * S,
     (pz - az) * S * HAND_Z_SCALE
    );
-   /* ── 拇指根微调（基于 MANO 解剖学）：拇指实际从手掌外侧斜向伸出，
-      而非从掌心正中长出。将 J[1]（拇指根）向腕 J[0] 方向偏移 12%，
-      让「掌心→拇指根」这段连接段斜向伸出，更接近真实手型 ── */
+   /* -- Thumb base tweak (based on MANO anatomy): the thumb actually extends diagonally from the outer
+      edge of the palm rather than growing straight out of its center. Shift J[1] (thumb base) 12% toward
+      the wrist J[0] so the "palm -> thumb base" link runs diagonally, closer to a real hand -- */
    J[1].x = J[1].x * 0.88 + J[0].x * 0.12;
    J[1].y = J[1].y * 0.88 + J[0].y * 0.12;
    J[1].z = J[1].z * 0.88 + J[0].z * 0.12;
-   /* 掌心盘半径：随手指实际大小动态缩放 —— 四个指根到掌心的平均距离 × 1.35，
-     保证手掌大小始终与手指匹配（手大掌大、手小掌小，比例自然） */
+   /* Palm disc radius: scaled dynamically with the real finger size -- average distance from the four
+      finger bases to the palm center ×1.35 -- palm size always matches finger size (natural proportions) */
   let pr = 0;
   for (const i of [5, 9, 13, 17]) {
     pr += Math.hypot(lm[i].x - px, lm[i].y - py);
@@ -1153,8 +1153,8 @@ function updateHandJoints(lm) {
   pr = (pr / 4) * S * 1.8;
   surfMat.uniforms.uSegR.value[21] = Math.max(0.55, pr);
 }
-/* 是否触发地球变形：任意识别到的手势都触发（张掌/握拳/比耶/点赞/食指/拇指向下/我爱你…）
-   仅当手完全离开（onGestureResult 里 !lm 分支）才流回地球 */
+/* Whether to trigger the globe morph: any recognized gesture triggers it (open palm/fist/victory/thumbs up/
+   pointing/thumbs down/I love you…); it flows back only when the hand fully leaves (!lm in onGestureResult) */
 function isMorphGesture(g) {
   return !!g && g !== 'none' && g !== 'unknown' && g !== 'undefined';
 }
@@ -1167,11 +1167,11 @@ function onGestureResult(res) {
     prevCX = prevCY = prevArea = null;
     setGestStatus('idle', 'idle');
     updateGestBubble(null, 0);
-    /* 无手：白球缩回 + 地球流回原状 */
+    /* No hand: the white bubble retracts + the globe flows back to its original shape */
     morphTarget = 0;
     return;
   }
-  /* 只要有手的关键点（landmarks）就变形，不依赖手势类别 —— 任意动作都能复刻 */
+  /* Morphing starts as soon as hand landmarks exist, regardless of gesture category -- any pose is replicated */
   handPresent = true;
   handGesture = (g && g.categoryName) || 'unknown';
   const conf = (g ? g.score : 0) * 100;
@@ -1179,29 +1179,29 @@ function onGestureResult(res) {
   setGestStatus(label.name + ' ' + conf.toFixed(0) + '%', 'ok');
   updateGestBubble(handGesture, g ? g.score : 0);
 
-  /* 实时更新手形关节坐标（所有手势都更新，保证手形实时跟手） */
+  /* Update hand joint coordinates live (updated for every gesture so the hand tracks in real time) */
   updateHandJoints(lm);
 
-  /* 有手 → 地球溶解成手形（任意手势） */
+  /* Hand present -> the globe dissolves into a hand (any gesture) */
   morphTarget = 1;
 
-  /* 手掌中心：0=腕, 5/9/13/17=指根，平均 → 旋转控制基准 */
+  /* Palm center: 0=wrist, 5/9/13/17=finger bases; their average is the rotation control reference */
   const base = [0, 5, 9, 13, 17];
   let cx = 0, cy = 0;
   for (const i of base) { cx += lm[i].x; cy += lm[i].y; }
   cx /= base.length; cy /= base.length;
 
-  /* 置信度低于 0.6 的手势视为噪声，允许累积偏移但不直接缩放 */
+  /* Gestures with confidence below 0.6 count as noise: accumulated offset is allowed, but no direct scaling */
   const confGate = (g && g.score) ? g.score : 0;
   const ctrlAllowed = confGate >= 0.6;
 
-  /* 掌型大小EMA：腕(0)到中指根(9)的距离，用于平滑缩放 */
+  /* Palm size EMA: the distance from wrist(0) to middle finger base(9), used for smooth scaling */
   const p0 = lm[0], p9 = lm[9];
   const area = Math.hypot(p0.x - p9.x, p0.y - p9.y);
   if (smoothArea === null) smoothArea = area;
   smoothArea = smoothArea * (1 - areaSmoothK) + area * areaSmoothK;
 
-  /* 旋转控制：只有当置信度≥0.6时才允许 */
+  /* Rotation control: only allowed when confidence >= 0.6 */
   if (prevCX !== null && prevCY !== null && ctrlAllowed) {
     const rawDX = cx - prevCX;
     const rawDY = cy - prevCY;
@@ -1217,7 +1217,7 @@ function onGestureResult(res) {
     gestPitch = THREE.MathUtils.clamp(gestPitch, -1.25, 1.25);
   }
 
-  /* 缩放控制：只有当置信度≥0.75且使用EMA面积时才允许（防手抖乱缩放） */
+  /* Zoom control: only allowed when confidence >= 0.75 and the EMA area is used (prevents jittery zooming) */
   if (ctrlAllowed && confGate >= 0.75) {
     if (prevArea !== null) {
       const da = smoothArea - prevArea;
@@ -1234,7 +1234,7 @@ async function enableHands() {
   if (handOn) return;
   handOn = true;
   try {
-    /* 本地 FilesetResolver 加载 WASM（已随仓库部署，无需 CDN） */
+    /* Load WASM through the local FilesetResolver (shipped with the repo, no CDN needed) */
     const fileset = await FilesetResolver.forVisionTasks(GEST_WASM);
     handModel = await GestureRecognizer.createFromOptions(
       fileset, {
@@ -1246,7 +1246,7 @@ async function enableHands() {
         minTrackingConfidence: 0.5
       }
     );
-    /* 原生摄像头启动（兼容手机浏览器） */
+    /* Start the native camera (compatible with mobile browsers) */
     const stream = await navigator.mediaDevices.getUserMedia({
       video: { width: 320, height: 240, facingMode: 'user' }, audio: false
     });
@@ -1255,7 +1255,7 @@ async function enableHands() {
     setGestStatus('ready', 'ok');
     updateGestBubble(null, 0);
     hideCameraOverlay();
-    /* 循环送帧识别（VIDEO 模式需时间戳） */
+    /* Loop frames in for recognition (VIDEO mode requires timestamps) */
     let sending = false, lastVideoTime = -1;
     const loop = async () => {
       if (!handOn) return;
@@ -1271,10 +1271,10 @@ async function enableHands() {
       requestAnimationFrame(loop);
     };
     loop();
-    console.log('[Hands] GestureRecognizer 已启动 (' + handDelegate + ')');
+    console.log('[Hands] GestureRecognizer started (' + handDelegate + ')');
   } catch (e) {
-    console.warn('[Hands] 手势启动失败', e);
-    /* GPU 失败自动降级 CPU 重试（手机 WebGL 不支持 GPU delegate 常见） */
+    console.warn('[Hands] Failed to start gestures', e);
+    /* Automatically fall back to CPU and retry when GPU fails (mobile WebGL often lacks GPU delegate support) */
     if (handDelegate === 'GPU') {
       if (handModel && handModel.close) { try { handModel.close(); } catch (e2) {} }
       handModel = null;
@@ -1290,8 +1290,8 @@ async function enableHands() {
     const msg = (e && e.message) ? e.message : String(e);
     setGestStatus('err', 'warn');
     updateGestBubble(null, 0);
-    console.warn('[Hands] 手势启动失败:', msg);
-    /* 摄像头被拒 / 不可用时的可视化提示（此前无反馈时难以定位失败原因） */
+    console.warn('[Hands] Failed to start gestures:', msg);
+    /* Visual prompt when the camera is denied / unavailable (the failure was hard to locate without feedback) */
     showCameraOverlay((e && e.name) ? e.name : msg);
     const retry = () => {
       window.removeEventListener('pointerdown', retry);
@@ -1306,7 +1306,7 @@ async function enableHands() {
   }
 }
 
-/* ── 摄像头权限/可用性提示层：浏览器拦截 getUserMedia 时显示清晰指引，避免"静默失败" ── */
+/* -- Camera permission/availability prompt layer: shows clear guidance when the browser blocks getUserMedia, avoiding "silent failure" -- */
 function showCameraOverlay(reason) {
   let o = document.getElementById('cam-ov');
   if (!o) {
@@ -1336,10 +1336,10 @@ function hideCameraOverlay() {
   if (o) o.style.display = 'none';
 }
 
-/* 备用判定：d3.geoContains（真实球面几何，单次约 39ms）。
-   注意：world-atlas 的 land-10m 环缠绕方向与 d3 的球面约定不一致，
-   实测 geoContains 会把大西洋/几内亚湾/南太平洋也判成陆地（恒为 true），
-   因此主判定必须用上面的光栅化查表；此函数仅用于人工对照调试。 */
+/* Fallback test: d3.geoContains (true spherical geometry, about 39ms per call).
+   Note: the ring winding order of world-atlas land-10m disagrees with d3's spherical convention --
+   geoContains in practice also judges the Atlantic / Gulf of Guinea / South Pacific as land (always true),
+   so the main test must use the rasterized lookup above; this function is only for manual cross-check debugging. */
 window.__geoContains = (lon, lat) => (landGeoRef ? d3.geoContains(landGeoRef, [lon, lat]) : null);
 window.__isLandAt = (lon, lat) => (landTable ? isLandAt(landTable, lon, lat) : null);
 </script>
