@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>真实粒子地球 · Accurate Particle Earth</title>
+<title>Real Particle Earth · Accurate Particle Earth</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body {
@@ -92,11 +92,11 @@
 
 <div id="loading">
   <div class="ring"></div>
-  <div>加载高精度陆地数据</div>
+  <div>Loading high-precision land data</div>
   <div id="bar"><i></i></div>
   <div id="progress"></div>
   <div id="note"></div>
-  <button id="retry" onclick="location.reload()">重新加载</button>
+  <button id="retry" onclick="location.reload()">Reload</button>
 </div>
 
 <div id="cities"></div>
@@ -156,15 +156,15 @@ const setBar = (p) => { document.querySelector('#bar i').style.width = (Math.max
 const setNote = (html) => { const n = $('note'); n.innerHTML = html; n.classList.add('on'); };
 
 if (location.protocol === 'file:') {
-  setNote('检测到 <b>file://</b> 协议：浏览器会拦截本地数据请求，页面将一直卡在加载。<br>' +
-          '请用本地服务器打开（<b>python3 -m http.server 8000</b>）或部署到静态托管。');
+  setNote('Detected <b>file://</b> protocol: the browser will block local data requests and the page will stay stuck loading.<br>' +
+          'Please open via a local server (<b>python3 -m http.server 8000</b>) or deploy to static hosting.');
 }
 
 let renderer;
 try {
   renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
 } catch (e) {
-  setNote('WebGL 初始化失败：当前浏览器 / 设备不支持 WebGL。');
+  setNote('WebGL initialization failed: the current browser/device does not support WebGL.');
   throw e;
 }
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -226,7 +226,7 @@ async function fetchLand(url) {
       chunks.push(value); received += value.length; lastTick = Date.now();
       const p = Math.min(1, received / LAND_BYTES);
       setBar(0.02 + 0.68 * p);
-      setProgress('下载陆地数据… ' + Math.round(p * 100) + '%');
+      setProgress('Downloading land data… ' + Math.round(p * 100) + '%');
     }
   } finally { clearInterval(stall); }
   if (received < 200000) throw new Error('下载不完整: ' + received);
@@ -237,16 +237,16 @@ async function loadLandGeoJSON() {
   for (const url of SOURCES) {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        setProgress(attempt ? '网络停滞，正在重试…' : '连接数据源…'); setBar(0.01);
+        setProgress(attempt ? 'Network stalled, retrying…' : 'Connecting to data source…'); setBar(0.01);
         const topo = await fetchLand(url);
-        setProgress('解析陆地数据…'); setBar(0.72); await frame();
+        setProgress('Parsing land data…'); setBar(0.72); await frame();
         const land = topojson.feature(topo, topo.objects.land || Object.values(topo.objects)[0]);
         setBar(0.78);
         console.log('[Earth] 陆地数据已加载:', url);
         return { land, url };
       } catch (e) {
         console.warn('[Earth] 源失败:', url, e);
-        if (attempt === 0) { setProgress('连接中断，重试中…'); await new Promise(r => setTimeout(r, 800)); }
+        if (attempt === 0) { setProgress('Connection interrupted, retrying…'); await new Promise(r => setTimeout(r, 800)); }
       }
     }
   }
@@ -580,7 +580,7 @@ async function buildSurface(N) {
 
   for (let i = 0; i < N; i++) {
     if (i % 20000 === 0) {
-      setProgress('采样陆地粒子… ' + Math.round(i / N * 100) + '%');
+      setProgress('Sampling land particles… ' + Math.round(i / N * 100) + '%');
       setBar(0.9 + 0.1 * (i / N));
       await frame();
     }
@@ -634,27 +634,27 @@ function makeGlowTexture() {
 
 /* ── 城市灯光：真实经纬度 + 中文名 ───────────────────────────── */
 const CITIES = [
-  ['北京',39.90,116.41], ['上海',31.23,121.47], ['广州',23.13,113.26],
-  ['深圳',22.54,114.06], ['成都',30.57,104.07], ['重庆',29.56,106.55],
-  ['西安',34.34,108.94], ['武汉',30.59,114.31], ['杭州',30.27,120.16],
-  ['南京',32.06,118.80], ['天津',39.13,117.20], ['沈阳',41.80,123.43],
-  ['哈尔滨',45.80,126.53], ['乌鲁木齐',43.83,87.62], ['拉萨',29.65,91.14],
-  ['昆明',25.04,102.72], ['长沙',28.23,112.94], ['郑州',34.75,113.63],
-  ['青岛',36.07,120.38], ['福州',26.07,119.30], ['济南',36.65,117.12],
-  ['合肥',31.82,117.23], ['南宁',22.82,108.32], ['贵阳',26.65,106.63],
-  ['兰州',36.06,103.83], ['台北',25.03,121.57], ['香港',22.32,114.17],
-  ['澳门',22.19,113.54],
-  ['东京',35.68,139.69], ['首尔',37.57,126.98], ['曼谷',13.76,100.50],
-  ['新加坡',1.35,103.82], ['雅加达',-6.21,106.85], ['马尼拉',14.60,120.98],
-  ['新德里',28.61,77.21], ['孟买',19.08,72.88], ['迪拜',25.20,55.27],
-  ['伊斯坦布尔',41.01,28.98], ['莫斯科',55.76,37.62], ['伦敦',51.51,-0.13],
-  ['巴黎',48.86,2.35], ['柏林',52.52,13.40], ['马德里',40.42,-3.70],
-  ['罗马',41.90,12.50], ['开罗',30.04,31.24], ['拉各斯',6.52,3.38],
-  ['内罗毕',-1.29,36.82], ['约翰内斯堡',-26.20,28.05],
-  ['纽约',40.71,-74.01], ['洛杉矶',34.05,-118.24], ['芝加哥',41.88,-87.63],
-  ['多伦多',43.65,-79.38], ['墨西哥城',19.43,-99.13], ['圣保罗',-23.55,-46.63],
-  ['布宜诺斯艾利斯',-34.60,-58.38], ['利马',-12.05,-77.04],
-  ['悉尼',-33.87,151.21], ['墨尔本',-37.81,144.96], ['奥克兰',-36.85,174.76]
+  ['Beijing',39.90,116.41], ['Shanghai',31.23,121.47], ['Guangzhou',23.13,113.26],
+  ['Shenzhen',22.54,114.06], ['Chengdu',30.57,104.07], ['Chongqing',29.56,106.55],
+  ['Xi\'an',34.34,108.94], ['Wuhan',30.59,114.31], ['Hangzhou',30.27,120.16],
+  ['Nanjing',32.06,118.80], ['Tianjin',39.13,117.20], ['Shenyang',41.80,123.43],
+  ['Harbin',45.80,126.53], ['Urumqi',43.83,87.62], ['Lhasa',29.65,91.14],
+  ['Kunming',25.04,102.72], ['Changsha',28.23,112.94], ['Zhengzhou',34.75,113.63],
+  ['Qingdao',36.07,120.38], ['Fuzhou',26.07,119.30], ['Jinan',36.65,117.12],
+  ['Hefei',31.82,117.23], ['Nanning',22.82,108.32], ['Guiyang',26.65,106.63],
+  ['Lanzhou',36.06,103.83], ['Taipei',25.03,121.57], ['Hong Kong',22.32,114.17],
+  ['Macao',22.19,113.54],
+  ['Tokyo',35.68,139.69], ['Seoul',37.57,126.98], ['Bangkok',13.76,100.50],
+  ['Singapore',1.35,103.82], ['Jakarta',-6.21,106.85], ['Manila',14.60,120.98],
+  ['New Delhi',28.61,77.21], ['Mumbai',19.08,72.88], ['Dubai',25.20,55.27],
+  ['Istanbul',41.01,28.98], ['Moscow',55.76,37.62], ['London',51.51,-0.13],
+  ['Paris',48.86,2.35], ['Berlin',52.52,13.40], ['Madrid',40.42,-3.70],
+  ['Rome',41.90,12.50], ['Cairo',30.04,31.24], ['Lagos',6.52,3.38],
+  ['Nairobi',-1.29,36.82], ['Johannesburg',-26.20,28.05],
+  ['New York',40.71,-74.01], ['Los Angeles',34.05,-118.24], ['Chicago',41.88,-87.63],
+  ['Toronto',43.65,-79.38], ['Mexico City',19.43,-99.13], ['Sao Paulo',-23.55,-46.63],
+  ['Buenos Aires',-34.60,-58.38], ['Lima',-12.05,-77.04],
+  ['Sydney',-33.87,151.21], ['Melbourne',-37.81,144.96], ['Auckland',-36.85,174.76]
 ];
 
 /* 经纬度 → 球面局部坐标（与 toLonLat 严格互逆） */
@@ -865,17 +865,17 @@ function buildStarfield() {
 (async () => {
   const got = await loadLandGeoJSON();
   if (!got) {
-    setProgress('加载失败，请检查网络');
+    setProgress('Load failed, please check your network');
     document.querySelector('#bar').classList.add('err');
     $('retry').classList.add('on');
-    setNote('陆地数据加载失败。请确认通过 <b>HTTP/HTTPS</b> 打开本页面（不要双击 file://），' +
-            '且 <b>vendor/land-10m.json</b> 可访问。');
+    setNote('Failed to load land data. Please confirm the page is opened via <b>HTTP/HTTPS</b> (do not double-click file://), ' +
+            'and that <b>vendor/land-10m.json</b> is accessible.');
     return;
   }
   landGeoRef = got.land;
   console.log('[Earth] 数据源: ' + (got.url.indexOf('110m') >= 0 ? 'Natural Earth 1:110m' : 'Natural Earth 1:10m'));
 
-  setProgress('光栅化陆地边界…'); setBar(0.8); await frame();
+  setProgress('Rasterizing land boundaries…'); setBar(0.8); await frame();
   landTable = rasterizeLand(got.land);
   buildInterior();
   await buildSurface(CFG.targetSamples);
@@ -1000,7 +1000,7 @@ function animate() {
     if (!window.__renderErrShown) {
       window.__renderErrShown = true;
       console.error('[Render] 渲染帧异常:', err);
-      showFatalOverlay('渲染过程出现异常，已尝试恢复。若持续白屏请点击「重新加载」。');
+      showFatalOverlay('An exception occurred during rendering; recovery was attempted. If the screen stays blank, click “Reload”.');
     }
   }
 }
@@ -1019,7 +1019,7 @@ function showFatalOverlay(msg) {
     t.textContent = '⚠️ ' + msg;
     t.style.marginBottom = '18px';
     const b = document.createElement('button');
-    b.textContent = '重新加载';
+    b.textContent = 'Reload';
     b.style.cssText = 'padding:10px 28px;font-size:15px;border:1px solid #4d72c8;background:#1a2747;' +
       'color:#eaf2ff;border-radius:8px;cursor:pointer;';
     b.onclick = () => location.reload();
@@ -1031,7 +1031,7 @@ function showFatalOverlay(msg) {
 if (renderer && renderer.domElement) {
   renderer.domElement.addEventListener('webglcontextlost', (e) => {
     e.preventDefault();
-    showFatalOverlay('图形渲染上下文丢失（常见于切后台或内存紧张），请重新加载。');
+    showFatalOverlay('The graphics rendering context was lost (common when switching apps or under memory pressure). Please reload.');
   });
   renderer.domElement.addEventListener('webglcontextrestored', () => {
     const o = document.getElementById('fatal-ov');
@@ -1059,10 +1059,10 @@ window.addEventListener('resize', () => {
 const GEST_WASM = './vendor/mediapipe/wasm';
 const GEST_MODEL = './vendor/mediapipe/gesture_recognizer.task';
 const GEST_LABELS = {
-  Open_Palm: { name: '张开手掌' }, Closed_Fist: { name: '握拳' },
-  Pointing_Up: { name: '食指上指' }, Thumb_Up: { name: '点赞' },
-  Thumb_Down: { name: '拇指向下' }, Victory: { name: '剪刀手' },
-  ILoveYou: { name: '我爱你' }
+  Open_Palm: { name: 'Open Palm' }, Closed_Fist: { name: 'Closed Fist' },
+  Pointing_Up: { name: 'Pointing Up' }, Thumb_Up: { name: 'Thumbs Up' },
+  Thumb_Down: { name: 'Thumbs Down' }, Victory: { name: 'Victory' },
+  ILoveYou: { name: 'I Love You' }
 };
 /* Twemoji 彩色 SVG 手势图标（来自 farewell 图标库收录的 jdecked/twemoji） */
 const GEST_ICONS = {
@@ -1175,7 +1175,7 @@ function onGestureResult(res) {
   handPresent = true;
   handGesture = (g && g.categoryName) || 'unknown';
   const conf = (g ? g.score : 0) * 100;
-  const label = GEST_LABELS[handGesture] || { name: '手势', ico: '🖐️' };
+  const label = GEST_LABELS[handGesture] || { name: 'Gesture', ico: '🖐️' };
   setGestStatus(label.name + ' ' + conf.toFixed(0) + '%', 'ok');
   updateGestBubble(handGesture, g ? g.score : 0);
 
@@ -1319,10 +1319,10 @@ function showCameraOverlay(reason) {
     o.style.display = 'flex'; o.style.alignItems = 'center'; o.style.gap = '10px';
     const icon = document.createElement('span'); icon.textContent = '📷'; icon.style.fontSize = '18px';
     const txt = document.createElement('div');
-    txt.innerHTML = '<b>手势识别未启用</b>：未获得摄像头权限。<br>' +
-      '请在浏览器地址栏 / 权限设置中允许摄像头，然后点下面按钮重试。';
+    txt.innerHTML = '<b>Gesture recognition disabled</b>: camera permission was not granted.<br>' +
+      'Please allow camera access in the browser address bar / permission settings, then click the button below to retry.';
     const btn = document.createElement('button');
-    btn.textContent = '重试启用手势';
+    btn.textContent = 'Retry enabling gestures';
     btn.style.cssText = 'padding:8px 14px;border:1px solid #4d72c8;background:#1a2747;color:#eaf2ff;' +
       'border-radius:8px;cursor:pointer;white-space:nowrap;';
     btn.onclick = () => { hideCameraOverlay(); enableHands(); };
